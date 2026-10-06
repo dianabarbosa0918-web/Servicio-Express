@@ -148,8 +148,8 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
 const CONFIG = {
   // App de Azure (puedes reutilizar la del dashboard de alistamiento).
   // Déjalo vacío ("") para usar MODO DEMO (sin Excel, solo este navegador).
-  CLIENT_ID: "751eef87-b8e4-4b36-bea8-de88acc87eb8",
-  TENANT: "bfb53646-d4ba-4509-aabe-3c0ab4d79291",                 // o el ID de tu tenant / "organizations"
+  CLIENT_ID: "",
+  TENANT: "common",                 // o el ID de tu tenant / "organizations"
   // Nombre del Excel en tu OneDrive (lo busca solo, aunque esté en una carpeta)
   ARCHIVO: "ServicioExpress",
   TABLA: "Express",                 // nombre de la tabla dentro del Excel
@@ -197,7 +197,7 @@ const Demo = {
 
 /* ---------------- Almacenamiento: Excel por Microsoft Graph ---------------- */
 let msalApp = null, cuenta = null;
-const SCOPES = ["Files.ReadWrite"];
+const SCOPES = ["Files.ReadWrite.All"];
 async function initAuth(){
   msalApp = new msal.PublicClientApplication({
     auth: { clientId: CONFIG.CLIENT_ID, authority: "https://login.microsoftonline.com/" + CONFIG.TENANT, redirectUri: location.origin + location.pathname },
@@ -225,9 +225,17 @@ async function buscarExcel(){
   if (guardada) return (rutaExcel = guardada);
   const q = encodeURIComponent(CONFIG.ARCHIVO);
   const d = await graphGet(`/me/drive/root/search(q='${q}')?$select=id,name,file`);
-  const xl = (d.value || []).filter(i => i.file && /\.xlsx$/i.test(i.name) && i.name.toLowerCase().startsWith(CONFIG.ARCHIVO.toLowerCase()));
-  if (!xl.length) throw new Error(`No encontré ningún Excel llamado "${CONFIG.ARCHIVO}.xlsx" en el OneDrive de esta cuenta. Revisa que lo hayas subido a TU OneDrive (no a Teams/SharePoint) con esta misma cuenta.`);
-  rutaExcel = "/me/drive/items/" + xl[0].id;
+  const esXl = n => /\.xlsx$/i.test(n || "") && n.toLowerCase().startsWith(CONFIG.ARCHIVO.toLowerCase());
+  const propio = (d.value || []).filter(i => i.file && esXl(i.name));
+  if (propio.length){
+    rutaExcel = "/me/drive/items/" + propio[0].id;
+  } else {
+    // Buscar en "Compartido conmigo" (cuando el Excel es de otra persona)
+    const c = await graphGet("/me/drive/sharedWithMe");
+    const comp = (c.value || []).map(i => i.remoteItem || i).filter(i => esXl(i.name) && i.parentReference && i.parentReference.driveId);
+    if (!comp.length) throw new Error(`No encontré el Excel "${CONFIG.ARCHIVO}.xlsx" ni en tu OneDrive ni en "Compartido conmigo". Pide que te lo compartan con permiso de EDICIÓN a esta cuenta y ábrelo una vez desde el correo o OneDrive.`);
+    rutaExcel = `/drives/${comp[0].parentReference.driveId}/items/${comp[0].id}`;
+  }
   ls.set("express_ruta", rutaExcel);
   return rutaExcel;
 }
