@@ -148,7 +148,7 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
 const CONFIG = {
   // ===== OPCIÓN GOOGLE SHEETS (sin inicio de sesión) =====
   // Pega aquí la URL de tu Apps Script (termina en /exec). Si la pones, se usa Google Sheets.
-  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwhz269yzDtMQa9452ASjob86vq0Zklh59sqnE7m5PM8bZipoG_xlnu20zSC3Hfz4ZYcQ/exec",
+  SCRIPT_URL: "",
   // ===== OPCIÓN EXCEL ONEDRIVE (requiere iniciar sesión Microsoft) =====
   // App de Azure (puedes reutilizar la del dashboard de alistamiento).
   // Déjalo vacío ("") para usar MODO DEMO (sin Excel, solo este navegador).
@@ -284,8 +284,8 @@ const Sheets = {
     if (d.error) throw new Error(d.error);
     return d.filas.map(x => rowToObj(x.values, x.index));
   },
-  async agregar(o){ await sheetsPost({ accion:"agregar", fila:o }); },
-  async actualizar(i,o){ await sheetsPost({ accion:"actualizar", index:i, fila:o }); }
+  async nuevo(o){ const d = await sheetsPost({ accion:"agregar", fila:o, max:CONFIG.PUESTOS }); return d.filas; },
+  async cambiar(id, cambios, esperado){ const d = await sheetsPost({ accion:"actualizar", id, cambios, esperado }); return d.filas; }
 };
 
 /* ---------------- Estado general ---------------- */
@@ -307,9 +307,15 @@ function resumenHoy(){
   return { n, prom, pct: n ? Math.round(ok/n*100) : 0 };
 }
 
+let versionLocal = 0;
 async function refrescar(){
-  if (cargando) return; cargando = true;
-  try { filas = (await store.listar()).filter(f => f.ID !== "" && f.ID != null); sync = { ok:true, msg:"" }; }
+  if (cargando || ocupado) return; cargando = true;
+  const v0 = versionLocal;
+  try {
+    const nuevas = (await store.listar()).filter(f => f.ID !== "" && f.ID != null);
+    if (v0 === versionLocal && !ocupado) filas = nuevas;   // ignora lecturas viejas
+    sync = { ok:true, msg:"" };
+  }
   catch(e){ sync = { ok:false, msg:e.message }; console.error(e); }
   finally { cargando = false; }
   pintarSync();
@@ -446,8 +452,8 @@ function montarAsesora(){
   $("#puestos").onclick = e => {
     const b = e.target.closest("[data-act]"); if (!b) return;
     const id = b.dataset.id, act = b.dataset.act;
-    if (act === "ini") iniciar(id, b); else if (act === "fin") finalizar(id, b);
-    else if (act === "cancel") cancelar(id, b);
+    if (act === "ini") iniciar(id); else if (act === "fin") finalizar(id);
+    else if (act === "cancel") cancelar(id);
   };
 }
 
@@ -469,7 +475,7 @@ function cardAsesora(p, f){
 function renderAsesora(){
   const c = cupos(), P = CONFIG.PUESTOS, usados = c.filter(Boolean).length;
   $("#puestos").innerHTML = c.map((f,i) => cardAsesora(i+1, f)).join("");
-  if (!ocupado) $("#btnReg").disabled = usados >= P;
+  $("#btnReg").disabled = usados >= P;
   $("#ocupacion").textContent = `${usados} de ${P} cronómetros en uso`;
   const fin = finalizadosHoy(), r = resumenHoy();
   $("#resumen").textContent = r.n ? `${r.n} atendidos · promedio ${r.prom.toFixed(1)} min · ${r.pct}% a tiempo` : "";
@@ -518,62 +524,78 @@ async function despierto(){ try { if (navigator.wakeLock) await navigator.wakeLo
 
 /* ---------------- Acciones de la asesora ---------------- */
 function msg(t, err){ const m = $("#msg"); if (!m) return; m.textContent = t; m.className = "msg" + (err ? " err" : ""); }
-async function accion(fn, btn){
-  if (ocupado) return; ocupado = true;
-  const txt = btn ? btn.textContent : ""; if (btn){ btn.disabled = true; btn.textContent = "Guardando…"; }
-  try { await fn(); } catch(e){ msg(e.message, true); }
-  finally {
+function pintarAhora(){ versionLocal++; firma = ""; renderDatos(); tick(); }
+function filasDe(lista){ return (lista || []).map(x => rowToObj(x.values, x.index)).filter(f => f.ID !== "" && f.ID != null); }
+
+// Guarda en segundo plano; la pantalla ya se actualizó antes (respuesta instantánea)
+async function guardar(fn){
+  ocupado = true;
+  const el = $("#sync"); if (el){ el.className = "sync demo"; el.textContent = "Guardando…"; }
+  try {
+    const res = await fn();
+    if (Array.isArray(res)){ filas = filasDe(res); }
+    sync = { ok:true, msg:"" };
+  } catch(e){
+    msg(e.message, true);
+  } finally {
     ocupado = false;
-    if (btn && btn.isConnected){ btn.disabled = false; btn.textContent = txt; }
-    await refrescarYa();
+    versionLocal++;
+    if (store !== Sheets) await refrescarYa(); else { pintarSync(); firma = ""; renderDatos(); tick(); }
   }
 }
-async function fila(id){
+async function guardarNuevo(o){
+  if (store === Sheets) return Sheets.nuevo(o);
+  const act = (await store.listar()).filter(esActivo);
+  if (act.filter(f => f.ID !== o.ID).some(f => String(f.Placa).toUpperCase() === o.Placa)) throw new Error(`La placa ${o.Placa} ya tiene cronómetro.`);
+  await store.agregar(o);
+}
+async function guardarCambio(id, cambios, esperado){
+  if (store === Sheets) return Sheets.cambiar(id, cambios, esperado);
   const f = (await store.listar()).find(x => String(x.ID) === String(id));
   if (!f) throw new Error("No se encontró el registro. Recarga la página.");
-  return f;
+  if (esperado && f.Estado !== esperado) throw new Error("Este servicio ya cambió de estado.");
+  Object.assign(f, cambios); await store.actualizar(f._index, f);
 }
+function local(id){ return filas.find(f => String(f.ID) === String(id)); }
+
 function registrar(ev){
   ev.preventDefault();
+  if (ocupado) return msg("Espera un momento, guardando…", true);
   const placa = $("#fPlaca").value.trim().toUpperCase();
   if (placa.length < 5) return msg("Escribe la placa completa.", true);
-  accion(async () => {
-    const act = (await store.listar()).filter(esActivo);
-    if (act.some(f => String(f.Placa).toUpperCase() === placa)) throw new Error(`La placa ${placa} ya tiene cronómetro.`);
-    if (act.length >= CONFIG.PUESTOS) throw new Error(`Ya hay ${CONFIG.PUESTOS} cronómetros en uso. Finaliza uno primero.`);
-    const now = Date.now();
-    await store.agregar({ ID:nuevoId(), Fecha:fechaTxt(now), Placa:placa, Estado:"ESPERA", RegistroMs:now });
-    $("#fPlaca").value = "";
-    msg(`✓ ${placa} registrada. Pulsa ▶ Iniciar cuando crees la OT.`);
-    $("#fPlaca").focus();
-  }, $("#btnReg"));
+  const act = filas.filter(esActivo);
+  if (act.some(f => String(f.Placa).toUpperCase() === placa)) return msg(`La placa ${placa} ya tiene cronómetro.`, true);
+  if (act.length >= CONFIG.PUESTOS) return msg(`Ya hay ${CONFIG.PUESTOS} cronómetros en uso. Finaliza uno primero.`, true);
+  const now = Date.now();
+  const nueva = { _index:-1, ID:nuevoId(), Fecha:fechaTxt(now), Placa:placa, Estado:"ESPERA", RegistroMs:now, InicioMs:"", FinMs:"", HoraInicio:"", HoraFin:"", Minutos:"", Resultado:"" };
+  filas.push(nueva); pintarAhora();
+  $("#fPlaca").value = ""; $("#fPlaca").focus();
+  msg(`✓ ${placa} registrada. Pulsa ▶ Iniciar cuando crees la OT.`);
+  guardar(() => guardarNuevo(nueva));
 }
-function iniciar(id, btn){
-  accion(async () => {
-    const f = await fila(id); if (f.Estado !== "ESPERA") throw new Error("Este servicio ya fue iniciado.");
-    const now = Date.now();
-    Object.assign(f, { Estado:"EN_CURSO", InicioMs:now, HoraInicio:hora(now) });
-    await store.actualizar(f._index, f); msg(`▶ Cronómetro iniciado para ${f.Placa}.`);
-  }, btn);
+function cambiarLocal(id, cambios, esperado, texto){
+  if (ocupado) return msg("Espera un momento, guardando…", true);
+  const f = local(id); if (!f) return;
+  if (esperado && f.Estado !== esperado) return;
+  Object.assign(f, cambios); pintarAhora();
+  if (texto) msg(texto);
+  guardar(() => guardarCambio(id, cambios, esperado));
 }
-function finalizar(id, btn){
-  const loc = filas.find(f => String(f.ID) === String(id));
-  if (!confirm(`¿Finalizar el servicio de ${loc ? loc.Placa : "este vehículo"}?`)) return;
-  accion(async () => {
-    const f = await fila(id); if (f.Estado !== "EN_CURSO") throw new Error("Este servicio no está en curso.");
-    const now = Date.now(), min = Math.round((now - f.InicioMs)/6000)/10;
-    Object.assign(f, { Estado:"FINALIZADO", FinMs:now, HoraFin:hora(now), Minutos:min, Resultado: min <= CONFIG.META_MIN ? "A tiempo" : "Excedido" });
-    await store.actualizar(f._index, f); msg(`■ ${f.Placa} finalizada en ${fmt(now - f.InicioMs)}.`);
-  }, btn);
+function iniciar(id){
+  const now = Date.now(), f = local(id);
+  cambiarLocal(id, { Estado:"EN_CURSO", InicioMs:now, HoraInicio:hora(now) }, "ESPERA", `▶ Cronómetro iniciado para ${f ? f.Placa : ""}.`);
 }
-function cancelar(id, btn){
-  const loc = filas.find(f => String(f.ID) === String(id));
-  if (!confirm(`¿Cancelar y liberar el puesto de ${loc ? loc.Placa : "este vehículo"}? No contará como atendido.`)) return;
-  accion(async () => {
-    const f = await fila(id); const now = Date.now();
-    Object.assign(f, { Estado:"CANCELADO", FinMs:now, HoraFin:hora(now) });
-    await store.actualizar(f._index, f); msg(`${f.Placa} cancelada, puesto liberado.`);
-  }, btn);
+function finalizar(id){
+  const f = local(id); if (!f) return;
+  if (!confirm(`¿Finalizar el servicio de ${f.Placa}?`)) return;
+  const now = Date.now(), min = Math.round((now - f.InicioMs)/6000)/10;
+  cambiarLocal(id, { Estado:"FINALIZADO", FinMs:now, HoraFin:hora(now), Minutos:min, Resultado: min <= CONFIG.META_MIN ? "A tiempo" : "Excedido" }, "EN_CURSO", `■ ${f.Placa} finalizada en ${fmt(now - f.InicioMs)}.`);
+}
+function cancelar(id){
+  const f = local(id); if (!f) return;
+  if (!confirm(`¿Cancelar y liberar el cupo de ${f.Placa}? No contará como atendido.`)) return;
+  const now = Date.now();
+  cambiarLocal(id, { Estado:"CANCELADO", FinMs:now, HoraFin:hora(now) }, null, `${f.Placa} cancelada, cupo liberado.`);
 }
 
 /* ---------------- Arranque ---------------- */
