@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Servicio Express</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+:root{
+  --bg:#f3f4f7; --card:#fff; --ink:#14171f; --muted:#6b7280; --line:#e4e6eb;
+  --brand:#c3002f; --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --wait:#64748b;
+  --tv-bg:#0a0c11; --tv-card:#141821; --tv-line:#232938; --tv-ink:#f5f7fb; --tv-muted:#8a93a6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+a{color:inherit}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.go{background:var(--ok);color:#fff}
+.btn.stop{background:var(--ink);color:#fff}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.sm{padding:7px 10px;font-size:13px}
+.lnk{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:14px}
+.center{min-height:100vh;display:grid;place-items:center;padding:24px}
+.landing,.login{background:var(--card);border-radius:20px;padding:36px;max-width:640px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+.landing h1,.login h1{margin:0 0 6px}
+.landing p,.login p{color:var(--muted)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+.choice{display:flex;flex-direction:column;gap:6px;align-items:center;padding:26px 16px;border:1px solid var(--line);border-radius:16px;text-decoration:none;font-size:34px;transition:.15s}
+.choice:hover{border-color:var(--brand);transform:translateY(-2px)}
+.choice b{font-size:18px}.choice small{font-size:13px;color:var(--muted)}
+.demo{background:#fff7e6;color:#92400e!important;border-radius:10px;padding:10px;font-size:13px;margin-top:18px}
+.logo-xl{font-size:46px}
+
+/* ---------- ASESORA ---------- */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .logo{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:20px}
+.brand small{display:block;color:var(--muted);font-size:12px}
+.top-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.who{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.who input{border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:150px}
+.sync{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.sync.err::before{background:var(--bad)}.sync.demo::before{background:var(--warn)}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:22px}
+.panel{background:var(--card);border-radius:16px;padding:18px 20px;border:1px solid var(--line)}
+h2{font-size:16px;margin:0 0 12px}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sec-h span{color:var(--muted);font-size:13px}
+.frm{display:grid;grid-template-columns:1fr 1.4fr 1fr .8fr auto;gap:12px;align-items:end}
+.frm label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted)}
+.frm label span{font-weight:400}
+.frm input,.frm select{border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--ink);background:#fff;font-size:15px}
+#fPlaca{text-transform:uppercase;font-family:"JetBrains Mono",monospace;font-weight:800;letter-spacing:2px;font-size:18px}
+.msg{margin:10px 0 0;font-size:14px;min-height:20px;color:var(--ok)}
+.msg.err{color:var(--bad)}
+.grid-p{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.pc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px;border-top:5px solid var(--line);min-height:230px}
+.pc.libre{align-items:center;justify-content:center;color:var(--muted);border-style:dashed;border-top-style:dashed}
+.pc.espera{border-top-color:var(--wait)}
+.pc.curso{border-top-color:var(--ok)}
+.pc.curso.lv1{border-top-color:var(--warn);background:#fffaf0}
+.pc.curso.lv2{border-top-color:var(--bad);background:#fff3f3}
+.pc-h{font-size:12px;font-weight:700;color:var(--muted);display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.5px}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;background:#eef1f5;color:var(--wait);text-transform:none;letter-spacing:0}
+.pc.curso .tag{background:#e8f7ee;color:var(--ok)}
+.pc.lv1 .tag{background:#fff1d6;color:#b45309}.pc.lv2 .tag{background:#fde2e2;color:var(--bad)}
+.pc-tec{font-weight:600;font-size:15px}
+.pc-tec i{color:var(--muted);font-weight:400}
+.pc-placa{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:22px;letter-spacing:2px}
+.pc .timer{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:30px;color:var(--ok)}
+.pc.espera .timer{color:var(--wait);font-size:22px}
+.pc.lv1 .timer{color:#d97706}.pc.lv2 .timer{color:var(--bad)}
+.sub{color:var(--muted);font-size:12px}
+.bar{height:6px;border-radius:99px;background:#eceef2;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width 1s linear}
+.lv1 .bar i{background:var(--warn)}.lv2 .bar i{background:var(--bad)}
+.pc-btns{display:flex;gap:6px;margin-top:auto;flex-wrap:wrap}
+.pc-btns .btn:first-child{flex:1}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px;border-bottom:1px solid var(--line)}
+td{padding:9px 8px;border-bottom:1px solid var(--line)}
+td.mono{font-family:"JetBrains Mono",monospace;font-weight:700}
+.res{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px}
+.res.ok{background:#e8f7ee;color:var(--ok)}.res.bad{background:#fde2e2;color:var(--bad)}
+.empty{color:var(--muted);font-size:14px;padding:10px 0}
+.foot{text-align:center;font-size:12px;color:var(--muted)}
+.tblwrap{overflow-x:auto}
+@media (max-width:1100px){.grid-p{grid-template-columns:repeat(3,1fr)}.frm{grid-template-columns:1fr 1fr}.frm button{grid-column:1/-1}}
+@media (max-width:640px){.grid-p{grid-template-columns:1fr 1fr}.choices{grid-template-columns:1fr}.who input{width:110px}}
+
+/* ---------- TV ---------- */
+body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
+.tv{height:100vh;display:flex;flex-direction:column;padding:1.6vh 1.4vw;gap:1.4vh}
+.tv-top{display:flex;align-items:center;justify-content:space-between;gap:2vw}
+.tv-brand{font-size:2.2vw;font-weight:500;letter-spacing:.3vw}
+.tv-brand b{color:#ff3b5c;font-weight:800}
+.tv-stats{display:flex;gap:2.2vw}
+.st{text-align:center}.st b{display:block;font-size:2.2vw;font-family:"JetBrains Mono",monospace}
+.st small{font-size:.85vw;color:var(--tv-muted);text-transform:uppercase;letter-spacing:.1vw}
+.tv-clock{font-family:"JetBrains Mono",monospace;font-size:2.2vw;color:var(--tv-muted)}
+.tv-alert{min-height:0;max-height:0;overflow:hidden;border-radius:12px;background:var(--bad);color:#fff;font-weight:800;font-size:1.5vw;text-align:center;transition:.3s;padding:0 1vw}
+.tv-alert.on{max-height:8vh;min-height:5vh;padding:1.2vh 1vw;animation:flash 1s infinite alternate}
+@keyframes flash{to{background:#7f1d1d}}
+.tv-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:1vw;min-height:0}
+.tc{background:var(--tv-card);border:2px solid var(--tv-line);border-radius:1.4vw;padding:2vh 1vw;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.4vh;position:relative;overflow:hidden;border-top:1vh solid var(--tv-line)}
+.tc-p{position:absolute;top:1.6vh;left:0;right:0;font-size:.95vw;letter-spacing:.25vw;color:var(--tv-muted);font-weight:600}
+.tc-tec{font-size:2vw;font-weight:800;line-height:1.1;text-transform:uppercase;max-width:100%;overflow-wrap:anywhere}
+.tc-placa{font-family:"JetBrains Mono",monospace;font-size:2.4vw;font-weight:800;letter-spacing:.3vw;background:#f5c518;color:#111;border-radius:.5vw;padding:.4vh .9vw;border:3px solid #111;box-shadow:0 0 0 3px #f5c518}
+.tc .timer{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:4.6vw;line-height:1;color:#22c55e;font-variant-numeric:tabular-nums}
+.tc .timer.long{font-size:3.4vw}
+.tc .bar{width:90%;height:1.1vh;background:#232938}
+.tc .bar i{background:#22c55e}
+.tc-sub{font-size:1vw;color:var(--tv-muted);letter-spacing:.05vw}
+.tc.libre{opacity:.35;border-style:dashed}
+.tc-free{font-size:1.4vw;letter-spacing:.3vw;color:var(--tv-muted)}
+.tc.espera{border-top-color:#64748b}
+.tc.espera .timer{color:#94a3b8;font-size:3vw}
+.tc.curso{border-top-color:#22c55e}
+.tc.curso.lv1{border-color:#f59e0b;background:#2a2110}
+.tc.curso.lv1 .timer{color:#fbbf24}.tc.lv1 .bar i{background:#f59e0b}
+.tc.curso.lv2{border-color:#ef4444;background:#3a1010;animation:pulse 1.1s infinite}
+.tc.curso.lv2 .timer{color:#fff}.tc.lv2 .bar i{background:#ef4444}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.0)}50%{box-shadow:0 0 3vw .4vw rgba(239,68,68,.55);background:#5a1212}}
+.tv-foot{display:flex;align-items:center;gap:1.5vw;font-size:1vw;color:var(--tv-muted)}
+.tv-ult{flex:1;display:flex;gap:1.6vw;overflow:hidden;white-space:nowrap}
+.tv-ult span b{color:var(--tv-ink);font-family:"JetBrains Mono",monospace}
+.tv-foot button{background:none;border:1px solid var(--tv-line);color:var(--tv-muted);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:1vw}
+.tv-foot a{color:var(--tv-muted);text-decoration:none}
+.ov{position:fixed;inset:0;background:rgba(5,7,10,.92);display:grid;place-items:center;text-align:center;z-index:9;cursor:pointer}
+.ov b{font-size:2.4vw;display:block}.ov small{color:var(--tv-muted);font-size:1.1vw}
+.ov-i{font-size:6vw;margin-bottom:2vh}
+@media (max-width:900px){body.tvmode{overflow:auto}.tv{height:auto}.tv-grid{grid-template-columns:1fr 1fr}.tc{min-height:260px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* =====================================================================
+   CONFIGURACIÓN — edita solo este bloque
+   ===================================================================== */
+const CONFIG = {
+  // App de Azure (puedes reutilizar la del dashboard de alistamiento).
+  // Déjalo vacío ("") para usar MODO DEMO (sin Excel, solo este navegador).
+  CLIENT_ID: "",
+  TENANT: "common",                 // o el ID de tu tenant / "organizations"
+  // Ruta del Excel en Graph. Por defecto: raíz de tu OneDrive.
+  RUTA: "/me/drive/root:/ServicioExpress.xlsx:",
+  TABLA: "Express",                 // nombre de la tabla dentro del Excel
+  PUESTOS: 5,                       // máximo de cronómetros simultáneos
+  META_MIN: 60,                     // tiempo meta del servicio express (min)
+  AVISO_MIN: 45,                    // pre-alerta amarilla (min)
+  REPETIR_ALARMA_MIN: 3,            // repetir sonido de excedido cada X min
+  REFRESCO_SEG: 4,                  // cada cuántos segundos lee el Excel
+  VOZ: true,                        // el TV anuncia por voz las alertas
+  TECNICOS: []                      // lista sugerida, ej: ["Carlos","Luis"]
+};
+/* ===================================================================== */
+
+const COLS = ["ID","Fecha","Puesto","Placa","OT","Tecnico","Asesora","Estado","RegistroMs","InicioMs","FinMs","HoraInicio","HoraFin","Minutos","Resultado"];
+const DEMO = !CONFIG.CLIENT_ID;
+const app = document.getElementById("app");
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const ls = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k, v); } catch(e){} }
+};
+function fmt(ms){ ms = Math.max(0, ms); const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return h ? `${h}:${pad(m)}:${pad(x)}` : `${pad(m)}:${pad(x)}`; }
+function hora(ms){ return ms ? new Date(+ms).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}) : ""; }
+function fechaTxt(ms){ const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function esHoy(ms){ return !!ms && new Date(+ms).toDateString() === new Date().toDateString(); }
+function nivel(ms){ return ms >= CONFIG.META_MIN*60000 ? 2 : ms >= CONFIG.AVISO_MIN*60000 ? 1 : 0; }
+function esActivo(f){ return f.Estado === "ESPERA" || f.Estado === "EN_CURSO"; }
+function nuevoId(){ return "X" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase(); }
+function deletrear(p){ return String(p).split("").join(" "); }
+function rowToObj(v, i){ const o = {_index:i}; COLS.forEach((c,k) => o[c] = v[k]); return o; }
+function objToRow(o){ return COLS.map(c => (o[c] === undefined || o[c] === null) ? "" : o[c]); }
+
+/* ---------------- Almacenamiento: DEMO (localStorage) ---------------- */
+const Demo = {
+  key: "express_demo_rows",
+  load(){ try { return JSON.parse(ls.get(this.key)) || []; } catch(e){ return []; } },
+  save(r){ ls.set(this.key, JSON.stringify(r)); },
+  async listar(){ return this.load().map((v,i) => rowToObj(v,i)); },
+  async agregar(o){ const r = this.load(); r.push(objToRow(o)); this.save(r); },
+  async actualizar(i,o){ const r = this.load(); r[i] = objToRow(o); this.save(r); }
+};
+
+/* ---------------- Almacenamiento: Excel por Microsoft Graph ---------------- */
+let msalApp = null, cuenta = null;
+const SCOPES = ["Files.ReadWrite"];
+async function initAuth(){
+  msalApp = new msal.PublicClientApplication({
+    auth: { clientId: CONFIG.CLIENT_ID, authority: "https://login.microsoftonline.com/" + CONFIG.TENANT, redirectUri: location.origin + location.pathname },
+    cache: { cacheLocation: "localStorage" }
+  });
+  const r = await msalApp.handleRedirectPromise();
+  cuenta = (r && r.account) || msalApp.getAllAccounts()[0] || null;
+  return !!cuenta;
+}
+function login(){ msalApp.loginRedirect({ scopes: SCOPES }); }
+async function token(){
+  try { return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account: cuenta })).accessToken; }
+  catch(e){ msalApp.acquireTokenRedirect({ scopes: SCOPES, account: cuenta }); throw e; }
+}
+async function gfetch(path, opts = {}){
+  const t = await token();
+  const res = await fetch("https://graph.microsoft.com/v1.0" + CONFIG.RUTA + "/workbook/tables/" + encodeURIComponent(CONFIG.TABLA) + path, {
+    ...opts, headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" }
+  });
+  if (!res.ok) throw new Error("Excel/Graph " + res.status + ": " + (await res.text()).slice(0, 180));
+  return res.status === 204 ? null : res.json();
+}
+const Graph = {
+  async listar(){ const d = await gfetch("/rows"); return d.value.map(r => rowToObj(r.values[0], r.index)); },
+  async agregar(o){ await gfetch("/rows/add", { method:"POST", body: JSON.stringify({ values:[objToRow(o)] }) }); },
+  async actualizar(i,o){ await gfetch(`/rows/itemAt(index=${i})`, { method:"PATCH", body: JSON.stringify({ values:[objToRow(o)] }) }); }
+};
+
+/* ---------------- Estado general ---------------- */
+let store = DEMO ? Demo : Graph;
+let modo = "inicio", filas = [], firma = "", cargando = false, ocupado = false, iniciado = false;
+let sync = { ok: true, msg: "" };
+let conocidos = null;
+const niveles = {}, ultAlarma = {};
+
+function porPuesto(){
+  const m = {};
+  filas.filter(esActivo).forEach(f => { const p = +f.Puesto; if (!m[p] || +f.RegistroMs > +m[p].RegistroMs) m[p] = f; });
+  return m;
+}
+function finalizadosHoy(){ return filas.filter(f => f.Estado === "FINALIZADO" && esHoy(f.FinMs)).sort((a,b) => b.FinMs - a.FinMs); }
+function resumenHoy(){
+  const fin = finalizadosHoy(), n = fin.length;
+  const prom = n ? fin.reduce((s,f) => s + (f.FinMs - f.InicioMs), 0) / n / 60000 : 0;
+  const ok = fin.filter(f => (f.FinMs - f.InicioMs) <= CONFIG.META_MIN*60000).length;
+  return { n, prom, pct: n ? Math.round(ok/n*100) : 0 };
+}
+
+async function refrescar(){
+  if (cargando) return; cargando = true;
+  try { filas = (await store.listar()).filter(f => f.ID !== "" && f.ID != null); sync = { ok:true, msg:"" }; }
+  catch(e){ sync = { ok:false, msg:e.message }; console.error(e); }
+  finally { cargando = false; }
+  pintarSync();
+  const sig = JSON.stringify(filas.filter(f => esActivo(f) || esHoy(f.RegistroMs)).map(f => [f.ID,f.Estado,f.Tecnico,f.OT,f.Puesto,f.Placa]));
+  if (sig !== firma){ firma = sig; detectarCambios(); renderDatos(); }
+  tick();
+}
+async function refrescarYa(){ while (cargando) await sleep(80); firma = ""; await refrescar(); }
+
+function pintarSync(){
+  const el = $("#sync"); if (!el) return;
+  el.className = "sync" + (DEMO ? " demo" : sync.ok ? "" : " err");
+  el.textContent = DEMO ? "Modo demo (sin Excel)" : sync.ok ? "Conectado al Excel" : "Sin conexión: " + sync.msg;
+  el.title = sync.msg || "";
+}
+
+/* ---------------- Sonido y voz ---------------- */
+let actx = null, sonidoOn = false;
+function activarSonido(){ try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); sonidoOn = true; } catch(e){} }
+function tono(freq, dur, when = 0, type = "sine", vol = .4){
+  if (!actx || !sonidoOn) return;
+  const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + when;
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + .05);
+}
+const SONIDOS = {
+  inicio(){ tono(660,.18); tono(880,.28,.18); },
+  aviso(){ [0,.4].forEach(w => tono(880,.28,w,"triangle",.5)); },
+  excedido(){ for (let i = 0; i < 8; i++) tono(i%2 ? 740 : 988, .22, i*.26, "square", .3); },
+  fin(){ tono(523,.2); tono(659,.2,.18); tono(784,.4,.36); }
+};
+function hablar(t){
+  if (!CONFIG.VOZ || !sonidoOn || !window.speechSynthesis) return;
+  setTimeout(() => { const u = new SpeechSynthesisUtterance(t); u.lang = "es-CO"; u.rate = .95; speechSynthesis.speak(u); }, 1300);
+}
+function detectarCambios(){
+  const mapa = {}; filas.forEach(f => mapa[f.ID] = f);
+  if (conocidos && modo === "tv"){
+    for (const id in mapa){
+      const prev = conocidos[id], f = mapa[id];
+      if (f.Estado === "EN_CURSO" && prev !== "EN_CURSO"){ SONIDOS.inicio(); hablar(`Inicia servicio express. Placa ${deletrear(f.Placa)}`); }
+      if (f.Estado === "FINALIZADO" && prev && prev !== "FINALIZADO"){ SONIDOS.fin(); hablar(`Servicio terminado. Placa ${deletrear(f.Placa)}`); }
+    }
+  }
+  conocidos = {}; for (const id in mapa) conocidos[id] = mapa[id].Estado;
+}
+function alertar(d, lv, now){
+  const id = d.id, prev = niveles[id];
+  niveles[id] = lv;
+  if (prev === undefined){ if (lv === 2) ultAlarma[id] = now; return; }
+  if (lv > prev){
+    if (lv === 1){ SONIDOS.aviso(); hablar(`Atención. Placa ${deletrear(d.placa)} lleva ${CONFIG.AVISO_MIN} minutos`); }
+    if (lv === 2){ SONIDOS.excedido(); hablar(`Alerta. Placa ${deletrear(d.placa)} superó el tiempo de servicio express`); ultAlarma[id] = now; }
+  } else if (lv === 2 && now - (ultAlarma[id] || 0) >= CONFIG.REPETIR_ALARMA_MIN*60000){
+    SONIDOS.excedido(); ultAlarma[id] = now;
+  }
+}
+
+/* ---------------- Reloj de 1 segundo ---------------- */
+function tick(){
+  const now = Date.now();
+  const clk = $("#tvClock"); if (clk) clk.textContent = new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  document.querySelectorAll("[data-espera]").forEach(el => { el.querySelector(".timer").textContent = fmt(now - +el.dataset.espera); });
+  const exc = [];
+  document.querySelectorAll("[data-ini]").forEach(el => {
+    const ms = now - +el.dataset.ini, lv = nivel(ms), t = el.querySelector(".timer"), txt = fmt(ms);
+    t.textContent = txt; t.classList.toggle("long", txt.length > 5);
+    const b = el.querySelector(".bar i"); if (b) b.style.width = Math.min(100, ms / (CONFIG.META_MIN*600)) + "%";
+    el.classList.toggle("lv1", lv === 1); el.classList.toggle("lv2", lv === 2);
+    const tag = el.querySelector(".tag"); if (tag) tag.textContent = lv === 2 ? "Excedido" : lv === 1 ? "Por vencer" : "En curso";
+    if (lv === 2) exc.push(el.dataset);
+    if (modo === "tv") alertar(el.dataset, lv, now);
+  });
+  const a = $("#tvAlert");
+  if (a){ a.textContent = exc.map(d => `⚠ ${d.placa} · ${d.tec} superó ${CONFIG.META_MIN} min`).join("   •   "); a.classList.toggle("on", exc.length > 0); }
+}
+
+/* ---------------- Vistas ---------------- */
+function montar(){
+  firma = ""; document.body.className = modo === "tv" ? "tvmode" : "";
+  if (modo === "asesora") montarAsesora();
+  else if (modo === "tv") montarTV();
+  else montarInicio();
+  refrescar();
+}
+function montarInicio(){
+  app.innerHTML = `<div class="center"><div class="landing">
+    <div class="logo-xl">⏱</div><h1>Servicio Express</h1><p>¿Qué pantalla es este equipo?</p>
+    <div class="choices">
+      <a class="choice" href="#asesora">🧑‍💼<b>Asesora</b><small>Registrar placa, iniciar y finalizar</small></a>
+      <a class="choice" href="#tv">📺<b>Televisor</b><small>Cronómetros grandes con alertas y sonido</small></a>
+    </div>
+    ${DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador. Abre Asesora y TV en dos pestañas para probar. Pon tu CLIENT_ID en la configuración para conectar el Excel.</p>` : ""}
+  </div></div>`;
+}
+function renderLogin(){
+  app.innerHTML = `<div class="center"><div class="login"><div class="logo-xl">⏱</div><h1>Servicio Express</h1>
+    <p>Inicia sesión con la cuenta Microsoft que tiene el Excel.</p>
+    <button class="btn primary" id="btnLogin">Iniciar sesión con Microsoft</button></div></div>`;
+  $("#btnLogin").onclick = login;
+}
+
+function montarAsesora(){
+  app.innerHTML = `
+  <header class="top">
+    <div class="brand"><span class="logo">⏱</span><div><b>Servicio Express</b><small>Pantalla asesora</small></div></div>
+    <div class="top-r">
+      <label class="who">Asesora <input id="asesoraNombre" placeholder="Tu nombre"></label>
+      <span id="sync" class="sync"></span>
+      <a class="btn ghost sm" href="#tv" target="_blank">Abrir TV ↗</a>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="panel">
+      <h2>1 · Registrar vehículo</h2>
+      <form id="frm" class="frm" autocomplete="off">
+        <label>Placa<input id="fPlaca" maxlength="7" placeholder="ABC123"></label>
+        <label>Técnico<input id="fTec" list="dlTec" placeholder="Nombre del técnico"></label>
+        <label><div>N° OT <span>(opcional)</span></div><input id="fOT" placeholder="Se pide al iniciar"></label>
+        <label>Puesto<select id="fPuesto"></select></label>
+        <button class="btn primary" id="btnReg" type="submit">Registrar</button>
+      </form>
+      <datalist id="dlTec"></datalist>
+      <p id="msg" class="msg"></p>
+    </section>
+    <section>
+      <div class="sec-h"><h2>2 · Puestos — pulsa ▶ Iniciar al crear la OT y ■ Finalizar al entregar</h2><span id="ocupacion"></span></div>
+      <div id="puestos" class="grid-p"></div>
+    </section>
+    <section class="panel">
+      <div class="sec-h"><h2>Atendidos hoy</h2><span id="resumen"></span></div>
+      <div id="hist" class="tblwrap"></div>
+    </section>
+    <p class="foot">Meta ${CONFIG.META_MIN} min · alerta amarilla a los ${CONFIG.AVISO_MIN} min · <a href="#inicio">Cambiar pantalla</a></p>
+  </main>`;
+  const inp = $("#asesoraNombre"); inp.value = ls.get("express_asesora") || ""; inp.oninput = () => ls.set("express_asesora", inp.value.trim());
+  $("#fPlaca").oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); };
+  $("#frm").onsubmit = registrar;
+  $("#puestos").onclick = e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const id = b.dataset.id, act = b.dataset.act;
+    if (act === "ini") iniciar(id, b); else if (act === "fin") finalizar(id, b);
+    else if (act === "cancel") cancelar(id, b); else if (act === "tec") editarTec(id, b);
+  };
+}
+
+function cardAsesora(p, f){
+  if (!f) return `<div class="pc libre"><div class="pc-h">Puesto ${p}</div><div>Libre</div></div>`;
+  const tec = `<div class="pc-tec">${f.Tecnico ? esc(f.Tecnico) : "<i>Sin técnico</i>"} <button class="lnk" title="Cambiar técnico" data-act="tec" data-id="${esc(f.ID)}">✎</button></div>`;
+  if (f.Estado === "ESPERA") return `<div class="pc espera" data-espera="${+f.RegistroMs}">
+      <div class="pc-h">Puesto ${p}<span class="tag">En espera</span></div>${tec}
+      <div class="pc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="sub">esperando creación de OT</div>
+      <div class="pc-btns"><button class="btn go" data-act="ini" data-id="${esc(f.ID)}">▶ Iniciar</button>
+      <button class="btn ghost sm" data-act="cancel" data-id="${esc(f.ID)}">Cancelar</button></div></div>`;
+  return `<div class="pc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}" data-tec="${esc(f.Tecnico || "Sin técnico")}">
+      <div class="pc-h">Puesto ${p}<span class="tag">En curso</span></div>${tec}
+      <div class="pc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="bar"><i></i></div>
+      <div class="sub">${f.OT ? "OT " + esc(f.OT) + " · " : ""}inicio ${hora(f.InicioMs)}</div>
+      <div class="pc-btns"><button class="btn stop" data-act="fin" data-id="${esc(f.ID)}">■ Finalizar</button>
+      <button class="btn ghost sm" data-act="cancel" data-id="${esc(f.ID)}">✕</button></div></div>`;
+}
+
+function renderAsesora(){
+  const occ = porPuesto(), P = CONFIG.PUESTOS;
+  $("#puestos").innerHTML = Array.from({length:P}, (_,i) => cardAsesora(i+1, occ[i+1])).join("");
+  const libres = Array.from({length:P}, (_,i) => i+1).filter(p => !occ[p]);
+  const sel = $("#fPuesto"), prev = sel.value;
+  sel.innerHTML = libres.length ? libres.map(p => `<option value="${p}">Puesto ${p}</option>`).join("") : `<option value="">Sin cupo</option>`;
+  if (libres.includes(+prev)) sel.value = prev;
+  if (!ocupado) $("#btnReg").disabled = !libres.length;
+  $("#ocupacion").textContent = `${P - libres.length} de ${P} ocupados`;
+  const nombres = new Set(CONFIG.TECNICOS); filas.forEach(f => f.Tecnico && nombres.add(String(f.Tecnico)));
+  $("#dlTec").innerHTML = [...nombres].map(n => `<option value="${esc(n)}">`).join("");
+  const fin = finalizadosHoy(), r = resumenHoy();
+  $("#resumen").textContent = r.n ? `${r.n} atendidos · promedio ${r.prom.toFixed(1)} min · ${r.pct}% a tiempo` : "";
+  $("#hist").innerHTML = fin.length ? `<table><thead><tr><th>Placa</th><th>Técnico</th><th>OT</th><th>Puesto</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Resultado</th></tr></thead><tbody>
+    ${fin.map(f => { const ms = f.FinMs - f.InicioMs, ok = ms <= CONFIG.META_MIN*60000;
+      return `<tr><td class="mono">${esc(f.Placa)}</td><td>${esc(f.Tecnico)}</td><td>${esc(f.OT)}</td><td>${esc(f.Puesto)}</td><td>${hora(f.InicioMs)}</td><td>${hora(f.FinMs)}</td><td class="mono">${fmt(ms)}</td><td><span class="res ${ok ? "ok" : "bad"}">${ok ? "A tiempo" : "Excedido"}</span></td></tr>`; }).join("")}
+    </tbody></table>` : `<div class="empty">Aún no hay servicios finalizados hoy.</div>`;
+}
+
+function montarTV(){
+  app.innerHTML = `<div class="tv">
+    <header class="tv-top"><div class="tv-brand">SERVICIO <b>EXPRESS</b></div><div class="tv-stats" id="tvStats"></div><div class="tv-clock" id="tvClock"></div></header>
+    <div id="tvAlert" class="tv-alert"></div>
+    <div id="tvGrid" class="tv-grid"></div>
+    <footer class="tv-foot"><span id="sync" class="sync"></span><div id="tvUlt" class="tv-ult"></div>
+      <span>Meta ${CONFIG.META_MIN} min</span><button id="btnFs" title="Pantalla completa">⛶</button><a href="#inicio">⚙</a></footer>
+    <div id="sonidoOv" class="ov"><div><div class="ov-i">🔊</div><b>Toca la pantalla para activar el sonido</b><small>El navegador lo exige cada vez que se abre esta pantalla</small></div></div>
+  </div>`;
+  $("#sonidoOv").onclick = () => { activarSonido(); SONIDOS.inicio(); $("#sonidoOv").remove(); pantallaCompleta(); despierto(); };
+  $("#btnFs").onclick = pantallaCompleta;
+}
+function cardTV(p, f){
+  if (!f) return `<div class="tc libre"><div class="tc-p">PUESTO ${p}</div><div class="tc-free">DISPONIBLE</div></div>`;
+  const tec = esc(f.Tecnico || "Sin técnico");
+  if (f.Estado === "ESPERA") return `<div class="tc espera" data-espera="${+f.RegistroMs}"><div class="tc-p">PUESTO ${p}</div>
+      <div class="tc-tec">${tec}</div><div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="tc-sub">EN ESPERA DE OT</div></div>`;
+  return `<div class="tc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}" data-tec="${tec}"><div class="tc-p">PUESTO ${p}</div>
+      <div class="tc-tec">${tec}</div><div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="bar"><i></i></div>
+      <div class="tc-sub">${f.OT ? "OT " + esc(f.OT) + " · " : ""}INICIO ${hora(f.InicioMs)}</div></div>`;
+}
+function renderTV(){
+  const occ = porPuesto(), act = filas.filter(esActivo), r = resumenHoy();
+  $("#tvGrid").innerHTML = Array.from({length:CONFIG.PUESTOS}, (_,i) => cardTV(i+1, occ[i+1])).join("");
+  $("#tvStats").innerHTML = [
+    [act.filter(f => f.Estado === "EN_CURSO").length, "En curso"],
+    [act.filter(f => f.Estado === "ESPERA").length, "En espera"],
+    [r.n, "Atendidos hoy"],
+    [r.n ? r.prom.toFixed(0) + "'" : "–", "Promedio"],
+    [r.n ? r.pct + "%" : "–", "A tiempo"]
+  ].map(([v,l]) => `<div class="st"><b>${v}</b><small>${l}</small></div>`).join("");
+  $("#tvUlt").innerHTML = finalizadosHoy().slice(0,5).map(f => { const m = Math.round((f.FinMs - f.InicioMs)/60000), ok = m <= CONFIG.META_MIN;
+    return `<span><b>${esc(f.Placa)}</b> ${esc(f.Tecnico)} · ${m} min ${ok ? "✅" : "⛔"}</span>`; }).join("");
+}
+function renderDatos(){ if (modo === "asesora" && $("#puestos")) renderAsesora(); else if (modo === "tv" && $("#tvGrid")) renderTV(); }
+function pantallaCompleta(){ try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } catch(e){} }
+async function despierto(){ try { if (navigator.wakeLock) await navigator.wakeLock.request("screen"); } catch(e){} }
+
+/* ---------------- Acciones de la asesora ---------------- */
+function msg(t, err){ const m = $("#msg"); if (!m) return; m.textContent = t; m.className = "msg" + (err ? " err" : ""); }
+async function accion(fn, btn){
+  if (ocupado) return; ocupado = true;
+  const txt = btn ? btn.textContent : ""; if (btn){ btn.disabled = true; btn.textContent = "Guardando…"; }
+  try { await fn(); } catch(e){ msg(e.message, true); }
+  finally {
+    ocupado = false;
+    if (btn && btn.isConnected){ btn.disabled = false; btn.textContent = txt; }
+    await refrescarYa();
+  }
+}
+async function fila(id){
+  const f = (await store.listar()).find(x => String(x.ID) === String(id));
+  if (!f) throw new Error("No se encontró el registro. Recarga la página.");
+  return f;
+}
+function registrar(ev){
+  ev.preventDefault();
+  const placa = $("#fPlaca").value.trim().toUpperCase(), tec = $("#fTec").value.trim(), ot = $("#fOT").value.trim();
+  const puesto = +$("#fPuesto").value, asesora = $("#asesoraNombre").value.trim();
+  if (placa.length < 5) return msg("Escribe la placa completa.", true);
+  if (!puesto) return msg(`No hay puestos libres (máximo ${CONFIG.PUESTOS}).`, true);
+  accion(async () => {
+    const act = (await store.listar()).filter(esActivo);
+    if (act.some(f => String(f.Placa).toUpperCase() === placa)) throw new Error(`La placa ${placa} ya está en un puesto.`);
+    if (act.some(f => +f.Puesto === puesto)) throw new Error(`El puesto ${puesto} se acaba de ocupar. Elige otro.`);
+    if (act.length >= CONFIG.PUESTOS) throw new Error(`Ya hay ${CONFIG.PUESTOS} servicios activos.`);
+    const now = Date.now();
+    await store.agregar({ ID:nuevoId(), Fecha:fechaTxt(now), Puesto:puesto, Placa:placa, OT:ot, Tecnico:tec, Asesora:asesora, Estado:"ESPERA", RegistroMs:now });
+    $("#fPlaca").value = ""; $("#fOT").value = ""; $("#fTec").value = "";
+    msg(`✓ ${placa} registrada en el puesto ${puesto}. Pulsa ▶ Iniciar cuando crees la OT.`);
+    $("#fPlaca").focus();
+  }, $("#btnReg"));
+}
+function iniciar(id, btn){
+  const loc = filas.find(f => String(f.ID) === String(id)); let ot = loc ? String(loc.OT || "") : "";
+  if (!ot){ const r = prompt(`Número de OT para ${loc ? loc.Placa : ""} (opcional):`, ""); if (r === null) return; ot = r.trim(); }
+  accion(async () => {
+    const f = await fila(id); if (f.Estado !== "ESPERA") throw new Error("Este servicio ya fue iniciado.");
+    const now = Date.now();
+    Object.assign(f, { Estado:"EN_CURSO", OT:ot, InicioMs:now, HoraInicio:hora(now) });
+    await store.actualizar(f._index, f); msg(`▶ Cronómetro iniciado para ${f.Placa}.`);
+  }, btn);
+}
+function finalizar(id, btn){
+  const loc = filas.find(f => String(f.ID) === String(id));
+  if (!confirm(`¿Finalizar el servicio de ${loc ? loc.Placa : "este vehículo"}?`)) return;
+  accion(async () => {
+    const f = await fila(id); if (f.Estado !== "EN_CURSO") throw new Error("Este servicio no está en curso.");
+    const now = Date.now(), min = Math.round((now - f.InicioMs)/6000)/10;
+    Object.assign(f, { Estado:"FINALIZADO", FinMs:now, HoraFin:hora(now), Minutos:min, Resultado: min <= CONFIG.META_MIN ? "A tiempo" : "Excedido" });
+    await store.actualizar(f._index, f); msg(`■ ${f.Placa} finalizada en ${fmt(now - f.InicioMs)}.`);
+  }, btn);
+}
+function cancelar(id, btn){
+  const loc = filas.find(f => String(f.ID) === String(id));
+  if (!confirm(`¿Cancelar y liberar el puesto de ${loc ? loc.Placa : "este vehículo"}? No contará como atendido.`)) return;
+  accion(async () => {
+    const f = await fila(id); const now = Date.now();
+    Object.assign(f, { Estado:"CANCELADO", FinMs:now, HoraFin:hora(now) });
+    await store.actualizar(f._index, f); msg(`${f.Placa} cancelada, puesto liberado.`);
+  }, btn);
+}
+function editarTec(id, btn){
+  const loc = filas.find(f => String(f.ID) === String(id));
+  const r = prompt("Nombre del técnico:", loc ? (loc.Tecnico || "") : ""); if (r === null) return;
+  accion(async () => { const f = await fila(id); f.Tecnico = r.trim(); await store.actualizar(f._index, f); }, null);
+}
+
+/* ---------------- Arranque ---------------- */
+function irA(m){
+  modo = ["asesora","tv","inicio"].includes(m) ? m : "inicio";
+  if (modo !== "inicio") ls.set("express_modo", modo);
+  if (location.hash !== "#" + modo) history.replaceState(null, "", "#" + modo);
+  montar();
+}
+async function arrancar(){
+  const h = location.hash.replace("#", "");
+  if (["asesora","tv"].includes(h)) ls.set("express_modo", h);
+  if (!DEMO){
+    try { if (!(await initAuth())){ renderLogin(); return; } }
+    catch(e){ app.innerHTML = `<div class="center"><div class="login"><h1>Error de inicio de sesión</h1><p>${esc(e.message)}</p></div></div>`; return; }
+  }
+  const destino = ["asesora","tv","inicio"].includes(location.hash.slice(1)) ? location.hash.slice(1) : (ls.get("express_modo") || "inicio");
+  irA(destino);
+  if (!iniciado){
+    iniciado = true;
+    setInterval(tick, 1000);
+    setInterval(refrescar, CONFIG.REFRESCO_SEG * 1000);
+    window.addEventListener("hashchange", () => irA(location.hash.slice(1)));
+    window.addEventListener("storage", e => { if (DEMO && e.key === Demo.key) refrescar(); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ refrescar(); if (modo === "tv") despierto(); } });
+  }
+}
+arrancar();
+</script>
+</body>
+</html>
