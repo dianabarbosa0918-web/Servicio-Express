@@ -53,11 +53,11 @@ a{color:inherit}
 h2{font-size:16px;margin:0 0 12px}
 .sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .sec-h span{color:var(--muted);font-size:13px}
-.frm{display:grid;grid-template-columns:1fr 1.4fr 1fr .8fr auto;gap:12px;align-items:end}
+.frm{display:flex;gap:12px;max-width:520px}.frm input{flex:1;min-width:0}.frm .btn{padding:0 26px;font-size:16px}
 .frm label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted)}
 .frm label span{font-weight:400}
 .frm input,.frm select{border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--ink);background:#fff;font-size:15px}
-#fPlaca{text-transform:uppercase;font-family:"JetBrains Mono",monospace;font-weight:800;letter-spacing:2px;font-size:18px}
+#fPlaca{text-transform:uppercase;font-family:"JetBrains Mono",monospace;font-weight:800;letter-spacing:3px;font-size:26px}
 .msg{margin:10px 0 0;font-size:14px;min-height:20px;color:var(--ok)}
 .msg.err{color:var(--bad)}
 .grid-p{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
@@ -73,7 +73,7 @@ h2{font-size:16px;margin:0 0 12px}
 .pc.lv1 .tag{background:#fff1d6;color:#b45309}.pc.lv2 .tag{background:#fde2e2;color:var(--bad)}
 .pc-tec{font-weight:600;font-size:15px}
 .pc-tec i{color:var(--muted);font-weight:400}
-.pc-placa{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:22px;letter-spacing:2px}
+.pc-placa{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:26px;letter-spacing:2px}
 .pc .timer{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:30px;color:var(--ok)}
 .pc.espera .timer{color:var(--wait);font-size:22px}
 .pc.lv1 .timer{color:#d97706}.pc.lv2 .timer{color:var(--bad)}
@@ -92,7 +92,7 @@ td.mono{font-family:"JetBrains Mono",monospace;font-weight:700}
 .empty{color:var(--muted);font-size:14px;padding:10px 0}
 .foot{text-align:center;font-size:12px;color:var(--muted)}
 .tblwrap{overflow-x:auto}
-@media (max-width:1100px){.grid-p{grid-template-columns:repeat(3,1fr)}.frm{grid-template-columns:1fr 1fr}.frm button{grid-column:1/-1}}
+@media (max-width:1100px){.grid-p{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:640px){.grid-p{grid-template-columns:1fr 1fr}.choices{grid-template-columns:1fr}.who input{width:110px}}
 
 /* ---------- TV ---------- */
@@ -109,11 +109,11 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
 .tv-alert.on{max-height:8vh;min-height:5vh;padding:1.2vh 1vw;animation:flash 1s infinite alternate}
 @keyframes flash{to{background:#7f1d1d}}
 .tv-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:1vw;min-height:0}
-.tc{background:var(--tv-card);border:2px solid var(--tv-line);border-radius:1.4vw;padding:2vh 1vw;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.4vh;position:relative;overflow:hidden;border-top:1vh solid var(--tv-line)}
+.tc{background:var(--tv-card);border:2px solid var(--tv-line);border-radius:1.4vw;padding:2vh 1vw;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2.6vh;position:relative;overflow:hidden;border-top:1vh solid var(--tv-line)}
 .tc-p{position:absolute;top:1.6vh;left:0;right:0;font-size:.95vw;letter-spacing:.25vw;color:var(--tv-muted);font-weight:600}
 .tc-tec{font-size:2vw;font-weight:800;line-height:1.1;text-transform:uppercase;max-width:100%;overflow-wrap:anywhere}
-.tc-placa{font-family:"JetBrains Mono",monospace;font-size:2.4vw;font-weight:800;letter-spacing:.3vw;background:#f5c518;color:#111;border-radius:.5vw;padding:.4vh .9vw;border:3px solid #111;box-shadow:0 0 0 3px #f5c518}
-.tc .timer{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:4.6vw;line-height:1;color:#22c55e;font-variant-numeric:tabular-nums}
+.tc-placa{font-family:"JetBrains Mono",monospace;font-size:3vw;font-weight:800;letter-spacing:.3vw;background:#f5c518;color:#111;border-radius:.5vw;padding:.4vh .9vw;border:3px solid #111;box-shadow:0 0 0 3px #f5c518}
+.tc .timer{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:5vw;line-height:1;color:#22c55e;font-variant-numeric:tabular-nums}
 .tc .timer.long{font-size:3.4vw}
 .tc .bar{width:90%;height:1.1vh;background:#232938}
 .tc .bar i{background:#22c55e}
@@ -148,22 +148,21 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
 const CONFIG = {
   // App de Azure (puedes reutilizar la del dashboard de alistamiento).
   // Déjalo vacío ("") para usar MODO DEMO (sin Excel, solo este navegador).
-  CLIENT_ID: "751eef87-b8e4-4b36-bea8-de88acc87eb8",
-  TENANT: "bfb53646-d4ba-4509-aabe-3c0ab4d79291",                 // o el ID de tu tenant / "organizations"
-  // Ruta del Excel en Graph. Por defecto: raíz de tu OneDrive.
-  RUTA: "/me/drive/root:/ServicioExpress.xlsx:",
+  CLIENT_ID: "",
+  TENANT: "common",                 // o el ID de tu tenant / "organizations"
+  // Nombre del Excel en tu OneDrive (lo busca solo, aunque esté en una carpeta)
+  ARCHIVO: "ServicioExpress",
   TABLA: "Express",                 // nombre de la tabla dentro del Excel
   PUESTOS: 5,                       // máximo de cronómetros simultáneos
   META_MIN: 60,                     // tiempo meta del servicio express (min)
   AVISO_MIN: 45,                    // pre-alerta amarilla (min)
   REPETIR_ALARMA_MIN: 3,            // repetir sonido de excedido cada X min
   REFRESCO_SEG: 4,                  // cada cuántos segundos lee el Excel
-  VOZ: true,                        // el TV anuncia por voz las alertas
-  TECNICOS: []                      // lista sugerida, ej: ["Carlos","Luis"]
+  VOZ: true                         // el TV anuncia por voz las alertas
 };
 /* ===================================================================== */
 
-const COLS = ["ID","Fecha","Puesto","Placa","OT","Tecnico","Asesora","Estado","RegistroMs","InicioMs","FinMs","HoraInicio","HoraFin","Minutos","Resultado"];
+const COLS = ["ID","Fecha","Placa","Estado","RegistroMs","InicioMs","FinMs","HoraInicio","HoraFin","Minutos","Resultado"];
 const DEMO = !CONFIG.CLIENT_ID;
 const app = document.getElementById("app");
 const $ = (s, r = document) => r.querySelector(s);
@@ -213,12 +212,39 @@ async function token(){
   try { return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account: cuenta })).accessToken; }
   catch(e){ msalApp.acquireTokenRedirect({ scopes: SCOPES, account: cuenta }); throw e; }
 }
+let rutaExcel = null;
+async function graphGet(url){
+  const t = await token();
+  const r = await fetch("https://graph.microsoft.com/v1.0" + url, { headers: { Authorization: "Bearer " + t } });
+  if (!r.ok) throw new Error("Graph " + r.status + ": " + (await r.text()).slice(0, 160));
+  return r.json();
+}
+async function buscarExcel(){
+  if (rutaExcel) return rutaExcel;
+  const guardada = ls.get("express_ruta");
+  if (guardada) return (rutaExcel = guardada);
+  const q = encodeURIComponent(CONFIG.ARCHIVO);
+  const d = await graphGet(`/me/drive/root/search(q='${q}')?$select=id,name,file`);
+  const xl = (d.value || []).filter(i => i.file && /\.xlsx$/i.test(i.name) && i.name.toLowerCase().startsWith(CONFIG.ARCHIVO.toLowerCase()));
+  if (!xl.length) throw new Error(`No encontré ningún Excel llamado "${CONFIG.ARCHIVO}.xlsx" en el OneDrive de esta cuenta. Revisa que lo hayas subido a TU OneDrive (no a Teams/SharePoint) con esta misma cuenta.`);
+  rutaExcel = "/me/drive/items/" + xl[0].id;
+  ls.set("express_ruta", rutaExcel);
+  return rutaExcel;
+}
 async function gfetch(path, opts = {}){
   const t = await token();
-  const res = await fetch("https://graph.microsoft.com/v1.0" + CONFIG.RUTA + "/workbook/tables/" + encodeURIComponent(CONFIG.TABLA) + path, {
+  const base = await buscarExcel();
+  const res = await fetch("https://graph.microsoft.com/v1.0" + base + "/workbook/tables/" + encodeURIComponent(CONFIG.TABLA) + path, {
     ...opts, headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" }
   });
-  if (!res.ok) throw new Error("Excel/Graph " + res.status + ": " + (await res.text()).slice(0, 180));
+  if (!res.ok){
+    const txt = await res.text();
+    if (res.status === 404){
+      try { localStorage.removeItem("express_ruta"); } catch(e){} rutaExcel = null;
+      if (/table/i.test(txt) || /ItemNotFound/i.test(txt) && base) throw new Error(`Encontré el Excel pero no la tabla "${CONFIG.TABLA}". Usa la plantilla ServicioExpress.xlsx más reciente.`);
+    }
+    throw new Error("Excel " + res.status + ": " + txt.slice(0, 160));
+  }
   return res.status === 204 ? null : res.json();
 }
 const Graph = {
@@ -234,10 +260,9 @@ let sync = { ok: true, msg: "" };
 let conocidos = null;
 const niveles = {}, ultAlarma = {};
 
-function porPuesto(){
-  const m = {};
-  filas.filter(esActivo).forEach(f => { const p = +f.Puesto; if (!m[p] || +f.RegistroMs > +m[p].RegistroMs) m[p] = f; });
-  return m;
+function cupos(){
+  const a = filas.filter(esActivo).sort((x,y) => x.RegistroMs - y.RegistroMs).slice(0, CONFIG.PUESTOS);
+  return Array.from({length:CONFIG.PUESTOS}, (_,i) => a[i] || null);
 }
 function finalizadosHoy(){ return filas.filter(f => f.Estado === "FINALIZADO" && esHoy(f.FinMs)).sort((a,b) => b.FinMs - a.FinMs); }
 function resumenHoy(){
@@ -253,7 +278,7 @@ async function refrescar(){
   catch(e){ sync = { ok:false, msg:e.message }; console.error(e); }
   finally { cargando = false; }
   pintarSync();
-  const sig = JSON.stringify(filas.filter(f => esActivo(f) || esHoy(f.RegistroMs)).map(f => [f.ID,f.Estado,f.Tecnico,f.OT,f.Puesto,f.Placa]));
+  const sig = JSON.stringify(filas.filter(f => esActivo(f) || esHoy(f.RegistroMs)).map(f => [f.ID,f.Estado,f.Placa]));
   if (sig !== firma){ firma = sig; detectarCambios(); renderDatos(); }
   tick();
 }
@@ -325,7 +350,7 @@ function tick(){
     if (modo === "tv") alertar(el.dataset, lv, now);
   });
   const a = $("#tvAlert");
-  if (a){ a.textContent = exc.map(d => `⚠ ${d.placa} · ${d.tec} superó ${CONFIG.META_MIN} min`).join("   •   "); a.classList.toggle("on", exc.length > 0); }
+  if (a){ a.textContent = exc.map(d => `⚠ ${d.placa} superó ${CONFIG.META_MIN} min`).join("   •   "); a.classList.toggle("on", exc.length > 0); }
 }
 
 /* ---------------- Vistas ---------------- */
@@ -358,26 +383,21 @@ function montarAsesora(){
   <header class="top">
     <div class="brand"><span class="logo">⏱</span><div><b>Servicio Express</b><small>Pantalla asesora</small></div></div>
     <div class="top-r">
-      <label class="who">Asesora <input id="asesoraNombre" placeholder="Tu nombre"></label>
       <span id="sync" class="sync"></span>
       <a class="btn ghost sm" href="#tv" target="_blank">Abrir TV ↗</a>
     </div>
   </header>
   <main class="wrap">
     <section class="panel">
-      <h2>1 · Registrar vehículo</h2>
+      <h2>1 · Escribe la placa</h2>
       <form id="frm" class="frm" autocomplete="off">
-        <label>Placa<input id="fPlaca" maxlength="7" placeholder="ABC123"></label>
-        <label>Técnico<input id="fTec" list="dlTec" placeholder="Nombre del técnico"></label>
-        <label><div>N° OT <span>(opcional)</span></div><input id="fOT" placeholder="Se pide al iniciar"></label>
-        <label>Puesto<select id="fPuesto"></select></label>
+        <input id="fPlaca" maxlength="7" placeholder="ABC123" aria-label="Placa">
         <button class="btn primary" id="btnReg" type="submit">Registrar</button>
       </form>
-      <datalist id="dlTec"></datalist>
       <p id="msg" class="msg"></p>
     </section>
     <section>
-      <div class="sec-h"><h2>2 · Puestos — pulsa ▶ Iniciar al crear la OT y ■ Finalizar al entregar</h2><span id="ocupacion"></span></div>
+      <div class="sec-h"><h2>2 · Pulsa ▶ Iniciar al crear la OT y ■ Finalizar al entregar</h2><span id="ocupacion"></span></div>
       <div id="puestos" class="grid-p"></div>
     </section>
     <section class="panel">
@@ -386,49 +406,41 @@ function montarAsesora(){
     </section>
     <p class="foot">Meta ${CONFIG.META_MIN} min · alerta amarilla a los ${CONFIG.AVISO_MIN} min · <a href="#inicio">Cambiar pantalla</a></p>
   </main>`;
-  const inp = $("#asesoraNombre"); inp.value = ls.get("express_asesora") || ""; inp.oninput = () => ls.set("express_asesora", inp.value.trim());
   $("#fPlaca").oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); };
   $("#frm").onsubmit = registrar;
   $("#puestos").onclick = e => {
     const b = e.target.closest("[data-act]"); if (!b) return;
     const id = b.dataset.id, act = b.dataset.act;
     if (act === "ini") iniciar(id, b); else if (act === "fin") finalizar(id, b);
-    else if (act === "cancel") cancelar(id, b); else if (act === "tec") editarTec(id, b);
+    else if (act === "cancel") cancelar(id, b);
   };
 }
 
 function cardAsesora(p, f){
-  if (!f) return `<div class="pc libre"><div class="pc-h">Puesto ${p}</div><div>Libre</div></div>`;
-  const tec = `<div class="pc-tec">${f.Tecnico ? esc(f.Tecnico) : "<i>Sin técnico</i>"} <button class="lnk" title="Cambiar técnico" data-act="tec" data-id="${esc(f.ID)}">✎</button></div>`;
+  if (!f) return `<div class="pc libre"><div>Libre</div></div>`;
   if (f.Estado === "ESPERA") return `<div class="pc espera" data-espera="${+f.RegistroMs}">
-      <div class="pc-h">Puesto ${p}<span class="tag">En espera</span></div>${tec}
+      <div class="pc-h">Cupo ${p}<span class="tag">En espera</span></div>
       <div class="pc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="sub">esperando creación de OT</div>
       <div class="pc-btns"><button class="btn go" data-act="ini" data-id="${esc(f.ID)}">▶ Iniciar</button>
       <button class="btn ghost sm" data-act="cancel" data-id="${esc(f.ID)}">Cancelar</button></div></div>`;
-  return `<div class="pc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}" data-tec="${esc(f.Tecnico || "Sin técnico")}">
-      <div class="pc-h">Puesto ${p}<span class="tag">En curso</span></div>${tec}
+  return `<div class="pc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}">
+      <div class="pc-h">Cupo ${p}<span class="tag">En curso</span></div>
       <div class="pc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="bar"><i></i></div>
-      <div class="sub">${f.OT ? "OT " + esc(f.OT) + " · " : ""}inicio ${hora(f.InicioMs)}</div>
+      <div class="sub">inicio ${hora(f.InicioMs)}</div>
       <div class="pc-btns"><button class="btn stop" data-act="fin" data-id="${esc(f.ID)}">■ Finalizar</button>
       <button class="btn ghost sm" data-act="cancel" data-id="${esc(f.ID)}">✕</button></div></div>`;
 }
 
 function renderAsesora(){
-  const occ = porPuesto(), P = CONFIG.PUESTOS;
-  $("#puestos").innerHTML = Array.from({length:P}, (_,i) => cardAsesora(i+1, occ[i+1])).join("");
-  const libres = Array.from({length:P}, (_,i) => i+1).filter(p => !occ[p]);
-  const sel = $("#fPuesto"), prev = sel.value;
-  sel.innerHTML = libres.length ? libres.map(p => `<option value="${p}">Puesto ${p}</option>`).join("") : `<option value="">Sin cupo</option>`;
-  if (libres.includes(+prev)) sel.value = prev;
-  if (!ocupado) $("#btnReg").disabled = !libres.length;
-  $("#ocupacion").textContent = `${P - libres.length} de ${P} ocupados`;
-  const nombres = new Set(CONFIG.TECNICOS); filas.forEach(f => f.Tecnico && nombres.add(String(f.Tecnico)));
-  $("#dlTec").innerHTML = [...nombres].map(n => `<option value="${esc(n)}">`).join("");
+  const c = cupos(), P = CONFIG.PUESTOS, usados = c.filter(Boolean).length;
+  $("#puestos").innerHTML = c.map((f,i) => cardAsesora(i+1, f)).join("");
+  if (!ocupado) $("#btnReg").disabled = usados >= P;
+  $("#ocupacion").textContent = `${usados} de ${P} cronómetros en uso`;
   const fin = finalizadosHoy(), r = resumenHoy();
   $("#resumen").textContent = r.n ? `${r.n} atendidos · promedio ${r.prom.toFixed(1)} min · ${r.pct}% a tiempo` : "";
-  $("#hist").innerHTML = fin.length ? `<table><thead><tr><th>Placa</th><th>Técnico</th><th>OT</th><th>Puesto</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Resultado</th></tr></thead><tbody>
+  $("#hist").innerHTML = fin.length ? `<table><thead><tr><th>Placa</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Resultado</th></tr></thead><tbody>
     ${fin.map(f => { const ms = f.FinMs - f.InicioMs, ok = ms <= CONFIG.META_MIN*60000;
-      return `<tr><td class="mono">${esc(f.Placa)}</td><td>${esc(f.Tecnico)}</td><td>${esc(f.OT)}</td><td>${esc(f.Puesto)}</td><td>${hora(f.InicioMs)}</td><td>${hora(f.FinMs)}</td><td class="mono">${fmt(ms)}</td><td><span class="res ${ok ? "ok" : "bad"}">${ok ? "A tiempo" : "Excedido"}</span></td></tr>`; }).join("")}
+      return `<tr><td class="mono">${esc(f.Placa)}</td><td>${hora(f.InicioMs)}</td><td>${hora(f.FinMs)}</td><td class="mono">${fmt(ms)}</td><td><span class="res ${ok ? "ok" : "bad"}">${ok ? "A tiempo" : "Excedido"}</span></td></tr>`; }).join("")}
     </tbody></table>` : `<div class="empty">Aún no hay servicios finalizados hoy.</div>`;
 }
 
@@ -445,17 +457,16 @@ function montarTV(){
   $("#btnFs").onclick = pantallaCompleta;
 }
 function cardTV(p, f){
-  if (!f) return `<div class="tc libre"><div class="tc-p">PUESTO ${p}</div><div class="tc-free">DISPONIBLE</div></div>`;
-  const tec = esc(f.Tecnico || "Sin técnico");
-  if (f.Estado === "ESPERA") return `<div class="tc espera" data-espera="${+f.RegistroMs}"><div class="tc-p">PUESTO ${p}</div>
-      <div class="tc-tec">${tec}</div><div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="tc-sub">EN ESPERA DE OT</div></div>`;
-  return `<div class="tc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}" data-tec="${tec}"><div class="tc-p">PUESTO ${p}</div>
-      <div class="tc-tec">${tec}</div><div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="bar"><i></i></div>
-      <div class="tc-sub">${f.OT ? "OT " + esc(f.OT) + " · " : ""}INICIO ${hora(f.InicioMs)}</div></div>`;
+  if (!f) return `<div class="tc libre"><div class="tc-free">DISPONIBLE</div></div>`;
+  if (f.Estado === "ESPERA") return `<div class="tc espera" data-espera="${+f.RegistroMs}">
+      <div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="tc-sub">EN ESPERA DE OT</div></div>`;
+  return `<div class="tc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}">
+      <div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="bar"><i></i></div>
+      <div class="tc-sub">INICIO ${hora(f.InicioMs)}</div></div>`;
 }
 function renderTV(){
-  const occ = porPuesto(), act = filas.filter(esActivo), r = resumenHoy();
-  $("#tvGrid").innerHTML = Array.from({length:CONFIG.PUESTOS}, (_,i) => cardTV(i+1, occ[i+1])).join("");
+  const act = filas.filter(esActivo), r = resumenHoy();
+  $("#tvGrid").innerHTML = cupos().map((f,i) => cardTV(i+1, f)).join("");
   $("#tvStats").innerHTML = [
     [act.filter(f => f.Estado === "EN_CURSO").length, "En curso"],
     [act.filter(f => f.Estado === "ESPERA").length, "En espera"],
@@ -464,7 +475,7 @@ function renderTV(){
     [r.n ? r.pct + "%" : "–", "A tiempo"]
   ].map(([v,l]) => `<div class="st"><b>${v}</b><small>${l}</small></div>`).join("");
   $("#tvUlt").innerHTML = finalizadosHoy().slice(0,5).map(f => { const m = Math.round((f.FinMs - f.InicioMs)/60000), ok = m <= CONFIG.META_MIN;
-    return `<span><b>${esc(f.Placa)}</b> ${esc(f.Tecnico)} · ${m} min ${ok ? "✅" : "⛔"}</span>`; }).join("");
+    return `<span><b>${esc(f.Placa)}</b> ${m} min ${ok ? "✅" : "⛔"}</span>`; }).join("");
 }
 function renderDatos(){ if (modo === "asesora" && $("#puestos")) renderAsesora(); else if (modo === "tv" && $("#tvGrid")) renderTV(); }
 function pantallaCompleta(){ try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } catch(e){} }
@@ -489,29 +500,24 @@ async function fila(id){
 }
 function registrar(ev){
   ev.preventDefault();
-  const placa = $("#fPlaca").value.trim().toUpperCase(), tec = $("#fTec").value.trim(), ot = $("#fOT").value.trim();
-  const puesto = +$("#fPuesto").value, asesora = $("#asesoraNombre").value.trim();
+  const placa = $("#fPlaca").value.trim().toUpperCase();
   if (placa.length < 5) return msg("Escribe la placa completa.", true);
-  if (!puesto) return msg(`No hay puestos libres (máximo ${CONFIG.PUESTOS}).`, true);
   accion(async () => {
     const act = (await store.listar()).filter(esActivo);
-    if (act.some(f => String(f.Placa).toUpperCase() === placa)) throw new Error(`La placa ${placa} ya está en un puesto.`);
-    if (act.some(f => +f.Puesto === puesto)) throw new Error(`El puesto ${puesto} se acaba de ocupar. Elige otro.`);
-    if (act.length >= CONFIG.PUESTOS) throw new Error(`Ya hay ${CONFIG.PUESTOS} servicios activos.`);
+    if (act.some(f => String(f.Placa).toUpperCase() === placa)) throw new Error(`La placa ${placa} ya tiene cronómetro.`);
+    if (act.length >= CONFIG.PUESTOS) throw new Error(`Ya hay ${CONFIG.PUESTOS} cronómetros en uso. Finaliza uno primero.`);
     const now = Date.now();
-    await store.agregar({ ID:nuevoId(), Fecha:fechaTxt(now), Puesto:puesto, Placa:placa, OT:ot, Tecnico:tec, Asesora:asesora, Estado:"ESPERA", RegistroMs:now });
-    $("#fPlaca").value = ""; $("#fOT").value = ""; $("#fTec").value = "";
-    msg(`✓ ${placa} registrada en el puesto ${puesto}. Pulsa ▶ Iniciar cuando crees la OT.`);
+    await store.agregar({ ID:nuevoId(), Fecha:fechaTxt(now), Placa:placa, Estado:"ESPERA", RegistroMs:now });
+    $("#fPlaca").value = "";
+    msg(`✓ ${placa} registrada. Pulsa ▶ Iniciar cuando crees la OT.`);
     $("#fPlaca").focus();
   }, $("#btnReg"));
 }
 function iniciar(id, btn){
-  const loc = filas.find(f => String(f.ID) === String(id)); let ot = loc ? String(loc.OT || "") : "";
-  if (!ot){ const r = prompt(`Número de OT para ${loc ? loc.Placa : ""} (opcional):`, ""); if (r === null) return; ot = r.trim(); }
   accion(async () => {
     const f = await fila(id); if (f.Estado !== "ESPERA") throw new Error("Este servicio ya fue iniciado.");
     const now = Date.now();
-    Object.assign(f, { Estado:"EN_CURSO", OT:ot, InicioMs:now, HoraInicio:hora(now) });
+    Object.assign(f, { Estado:"EN_CURSO", InicioMs:now, HoraInicio:hora(now) });
     await store.actualizar(f._index, f); msg(`▶ Cronómetro iniciado para ${f.Placa}.`);
   }, btn);
 }
@@ -533,11 +539,6 @@ function cancelar(id, btn){
     Object.assign(f, { Estado:"CANCELADO", FinMs:now, HoraFin:hora(now) });
     await store.actualizar(f._index, f); msg(`${f.Placa} cancelada, puesto liberado.`);
   }, btn);
-}
-function editarTec(id, btn){
-  const loc = filas.find(f => String(f.ID) === String(id));
-  const r = prompt("Nombre del técnico:", loc ? (loc.Tecnico || "") : ""); if (r === null) return;
-  accion(async () => { const f = await fila(id); f.Tecnico = r.trim(); await store.actualizar(f._index, f); }, null);
 }
 
 /* ---------------- Arranque ---------------- */
