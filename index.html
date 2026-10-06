@@ -197,7 +197,7 @@ const Demo = {
 
 /* ---------------- Almacenamiento: Excel por Microsoft Graph ---------------- */
 let msalApp = null, cuenta = null;
-const SCOPES = ["Files.ReadWrite.All"];
+const SCOPES = ["Files.ReadWrite"];;
 async function initAuth(){
   msalApp = new msal.PublicClientApplication({
     auth: { clientId: CONFIG.CLIENT_ID, authority: "https://login.microsoftonline.com/" + CONFIG.TENANT, redirectUri: location.origin + location.pathname },
