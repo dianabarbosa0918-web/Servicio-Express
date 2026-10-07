@@ -148,7 +148,7 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
 const CONFIG = {
   // ===== OPCIÓN GOOGLE SHEETS (sin inicio de sesión) =====
   // Pega aquí la URL de tu Apps Script (termina en /exec). Si la pones, se usa Google Sheets.
-  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbys7IwvnRGUBni79lSM6yPgKM_PCeF9a9mwHxT5W9mTGFDusMUACHcc8Zxx6VtDDSc7CA/exec",
+  SCRIPT_URL: "",
   // ===== OPCIÓN EXCEL ONEDRIVE (requiere iniciar sesión Microsoft) =====
   // App de Azure (puedes reutilizar la del dashboard de alistamiento).
   // Déjalo vacío ("") para usar MODO DEMO (sin Excel, solo este navegador).
@@ -164,7 +164,8 @@ const CONFIG = {
   META_MIN: 90,                     // tiempo meta del servicio express (min)
   AVISO_MIN: 75,                    // pre-alerta amarilla (min)
   REPETIR_ALARMA_MIN: 3,            // repetir sonido de excedido cada X min
-  REFRESCO_SEG: 4,                  // cada cuántos segundos lee el Excel
+  REFRESCO_TV_SEG: 5,               // cada cuántos segundos lee el TV
+  REFRESCO_ASESORA_SEG: 10,         // cada cuántos segundos lee la pantalla asesora
   VOZ: true                         // el TV anuncia por voz las alertas
 };
 /* ===================================================================== */
@@ -270,17 +271,31 @@ const Graph = {
 };
 
 /* ---------------- Almacenamiento: Google Sheets (Apps Script) ---------------- */
+// Google a veces responde con una página de error (HTML) en vez de datos: se trata como fallo temporal
+class FalloTemporal extends Error {}
+async function leerJSON(r){
+  const txt = await r.text();
+  if (!r.ok || /^\s*</.test(txt)) throw new FalloTemporal("Google no respondió (" + r.status + ")");
+  try { return JSON.parse(txt); } catch(e){ throw new FalloTemporal("Respuesta incompleta de Google"); }
+}
 async function sheetsPost(body){
-  const r = await fetch(CONFIG.SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(body) });
-  const d = await r.json();
-  if (!d.ok) throw new Error(d.error || "Error guardando en Google Sheets");
-  return d;
+  for (let intento = 0; intento < 4; intento++){
+    if (intento) await sleep(1500 * intento);          // espera 1,5 s, 3 s, 4,5 s
+    try {
+      const r = await fetch(CONFIG.SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+      const d = await leerJSON(r);
+      if (!d.ok) throw new Error(d.error || "Error guardando en Google Sheets");
+      return d;
+    } catch(e){
+      if (!(e instanceof FalloTemporal) && !(e instanceof TypeError)) throw e;   // error real: no reintentar
+    }
+  }
+  throw new Error("No se pudo guardar después de varios intentos. Revisa el internet y vuelve a intentarlo.");
 }
 const Sheets = {
   async listar(){
     const r = await fetch(CONFIG.SCRIPT_URL + "?t=" + Date.now());
-    if (!r.ok) throw new Error("Google Sheets " + r.status);
-    const d = await r.json();
+    const d = await leerJSON(r);
     if (d.error) throw new Error(d.error);
     return d.filas.map(x => rowToObj(x.values, x.index));
   },
@@ -307,16 +322,19 @@ function resumenHoy(){
   return { n, prom, pct: n ? Math.round(ok/n*100) : 0 };
 }
 
-let versionLocal = 0;
+let versionLocal = 0, fallosSeguidos = 0, ultimaLectura = 0;
 async function refrescar(){
   if (cargando || ocupado) return; cargando = true;
   const v0 = versionLocal;
   try {
     const nuevas = (await store.listar()).filter(f => f.ID !== "" && f.ID != null);
     if (v0 === versionLocal && !ocupado) filas = nuevas;   // ignora lecturas viejas
-    sync = { ok:true, msg:"" };
+    sync = { ok:true, msg:"" }; fallosSeguidos = 0;
   }
-  catch(e){ sync = { ok:false, msg:e.message }; console.error(e); }
+  catch(e){
+    fallosSeguidos++; console.warn(e);
+    sync = fallosSeguidos >= 3 ? { ok:false, msg:e.message } : { ok:true, msg:"", reintento:true };
+  }
   finally { cargando = false; }
   pintarSync();
   const sig = JSON.stringify(filas.filter(f => esActivo(f) || esHoy(f.RegistroMs)).map(f => [f.ID,f.Estado,f.Placa]));
@@ -328,7 +346,7 @@ async function refrescarYa(){ while (cargando) await sleep(80); firma = ""; awai
 function pintarSync(){
   const el = $("#sync"); if (!el) return;
   el.className = "sync" + (DEMO ? " demo" : sync.ok ? "" : " err");
-  el.textContent = DEMO ? "Modo demo (sin Excel)" : sync.ok ? (MODO_DATOS === "sheets" ? "Conectado a Google Sheets" : "Conectado al Excel") : "Sin conexión: " + sync.msg;
+  el.textContent = DEMO ? "Modo demo (sin Excel)" : !sync.ok ? "Sin conexión — reintentando… (" + sync.msg + ")" : sync.reintento ? "Reconectando…" : (MODO_DATOS === "sheets" ? "Conectado a Google Sheets" : "Conectado al Excel");
   el.title = sync.msg || "";
 }
 
@@ -617,7 +635,12 @@ async function arrancar(){
   if (!iniciado){
     iniciado = true;
     setInterval(tick, 1000);
-    setInterval(refrescar, CONFIG.REFRESCO_SEG * 1000);
+    setInterval(() => {
+      if (modo === "asesora" && document.hidden) return;                 // pestaña oculta: no consulta
+      const base = (modo === "tv" ? CONFIG.REFRESCO_TV_SEG : CONFIG.REFRESCO_ASESORA_SEG) * 1000;
+      const espera = base * Math.min(4, 1 + fallosSeguidos);             // si Google falla, consulta más despacio
+      if (Date.now() - ultimaLectura >= espera){ ultimaLectura = Date.now(); refrescar(); }
+    }, 1000);
     window.addEventListener("hashchange", () => irA(location.hash.slice(1)));
     window.addEventListener("storage", e => { if (DEMO && e.key === Demo.key) refrescar(); });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ refrescar(); if (modo === "tv") despierto(); } });
