@@ -138,7 +138,9 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
 @media (max-width:900px){body.tvmode{overflow:auto}.tv{height:auto}.tv-grid{grid-template-columns:1fr 1fr}.tc{min-height:260px}}
 
 /* ---------- INICIO: sede / asesora / clave ---------- */
-.landing.wide{max-width:860px}
+.landing .box{text-align:left;max-width:420px;margin:0 auto}
+button.choice{background:#fff;cursor:pointer;font:inherit;font-size:34px;color:var(--ink)}
+.box .lnk{align-self:flex-start;padding:0;margin-bottom:-4px}
 .two{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-top:22px;text-align:left}
 .box{border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
 .box h3{margin:0;font-size:17px;display:flex;align-items:center;gap:8px}
@@ -387,33 +389,57 @@ function montar(){
 }
 const opcionesSede = sel => SEDES.map(s => `<option value="${esc(s)}" ${s === sel ? "selected" : ""}>${esc(s)}</option>`).join("");
 
-function montarInicio(aviso){
+function montarInicio(aviso, paso){
+  paso = paso || (aviso ? "asesora" : "elegir");
   const ultSede = ls.get("express_ultima_sede") || SEDES[0];
-  app.innerHTML = `<div class="center"><div class="landing wide">
-    <div class="logo-xl">⏱</div><h1>Servicio Express</h1><p>Elige la sede y la pantalla de este equipo</p>
-    <div class="two">
-      <form class="box" id="frmLogin" autocomplete="off">
-        <h3>🧑‍💼 Asesora</h3>
-        <p>Registrar placa, iniciar y finalizar el servicio</p>
-        <label class="fld">Sede<select id="lSede">${opcionesSede(ultSede)}</select></label>
-        <label class="fld">Asesora<select id="lAsesora"></select></label>
-        <label class="fld">Clave<input id="lClave" type="password" inputmode="numeric" placeholder="••••" autocomplete="off"></label>
-        <p id="lMsg" class="msg ${aviso ? "err" : ""}">${esc(aviso || "")}</p>
-        <button class="btn primary" id="btnEntrar" type="submit">Entrar</button>
-      </form>
+  const demo = DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador y la clave de todas es ${esc(CONFIG.DEMO_CLAVE)}. Pon tu SCRIPT_URL en la configuración para usar Google Sheets.</p>` : "";
+  const volver = `<button type="button" class="lnk" id="btnVolver">← Volver</button>`;
+
+  if (paso === "elegir"){
+    app.innerHTML = `<div class="center"><div class="landing">
+      <div class="logo-xl">⏱</div><h1>Servicio Express</h1><p>¿Qué pantalla es este equipo?</p>
+      <div class="choices">
+        <button class="choice" id="chAsesora">🧑‍💼<b>Asesora</b><small>Registrar placa, iniciar y finalizar</small></button>
+        <button class="choice" id="chTV">📺<b>Televisor</b><small>Cronómetros grandes con alertas y sonido</small></button>
+      </div>${demo}
+    </div></div>`;
+    $("#chAsesora").onclick = () => montarInicio(null, "asesora");
+    $("#chTV").onclick = () => montarInicio(null, "tv");
+    return;
+  }
+
+  if (paso === "tv"){
+    app.innerHTML = `<div class="center"><div class="landing">
       <form class="box" id="frmTV">
+        ${volver}
         <h3>📺 Televisor</h3>
-        <p>Cronómetros grandes de la sede, con alertas y sonido</p>
+        <p>¿De qué sede es este televisor?</p>
         <label class="fld">Sede<select id="tSede">${opcionesSede(ultSede)}</select></label>
-        <button class="btn ghost" type="submit">Abrir TV de la sede</button>
+        <button class="btn primary" type="submit">Abrir TV de la sede</button>
       </form>
-    </div>
-    ${DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador y la clave de todas es ${esc(CONFIG.DEMO_CLAVE)}. Pon tu SCRIPT_URL en la configuración para usar Google Sheets.</p>` : ""}
+    </div></div>`;
+    $("#btnVolver").onclick = () => montarInicio(null, "elegir");
+    $("#frmTV").onsubmit = e => { e.preventDefault(); ls.set("express_ultima_sede", $("#tSede").value); location.hash = "#tv/" + slug($("#tSede").value); };
+    return;
+  }
+
+  // paso "asesora": sede → asesora → clave
+  app.innerHTML = `<div class="center"><div class="landing">
+    <form class="box" id="frmLogin" autocomplete="off">
+      ${volver}
+      <h3>🧑‍💼 Asesora</h3>
+      <p>Elige tu sede, tu nombre y escribe tu clave</p>
+      <label class="fld">Sede<select id="lSede">${opcionesSede(ultSede)}</select></label>
+      <label class="fld">Asesora<select id="lAsesora"></select></label>
+      <label class="fld">Clave<input id="lClave" type="password" inputmode="numeric" placeholder="••••" autocomplete="off"></label>
+      <p id="lMsg" class="msg ${aviso ? "err" : ""}">${esc(aviso || "")}</p>
+      <button class="btn primary" id="btnEntrar" type="submit">Entrar</button>
+    </form>${demo}
   </div></div>`;
+  $("#btnVolver").onclick = () => montarInicio(null, "elegir");
   const llenarAsesoras = () => { $("#lAsesora").innerHTML = CONFIG.SEDES[$("#lSede").value].map(a => `<option>${esc(a)}</option>`).join(""); };
-  $("#lSede").onchange = () => { llenarAsesoras(); $("#tSede").value = $("#lSede").value; };
+  $("#lSede").onchange = llenarAsesoras;
   llenarAsesoras();
-  $("#frmTV").onsubmit = e => { e.preventDefault(); ls.set("express_ultima_sede", $("#tSede").value); location.hash = "#tv/" + slug($("#tSede").value); };
   $("#frmLogin").onsubmit = async e => {
     e.preventDefault();
     const c = { sede:$("#lSede").value, asesora:$("#lAsesora").value, clave:$("#lClave").value.trim() };
