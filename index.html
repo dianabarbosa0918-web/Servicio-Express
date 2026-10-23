@@ -165,6 +165,7 @@ button.choice{background:#fff;cursor:pointer;font:inherit;font-size:34px;color:v
    CONFIGURACIÓN — edita solo este bloque
    ===================================================================== */
 const CONFIG = {
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbykS2g4TsNZP6s8_KWPMOxC9I2HULmYaeZCqqCmqlb0rMAtSgzVhwd9s7_qBD4zsimo/exec",
 
   SEDES: {
     "Prado":       ["Nain", "Celenia"],
@@ -390,7 +391,7 @@ const opcionesSede = sel => SEDES.map(s => `<option value="${esc(s)}" ${s === se
 function montarInicio(aviso, paso){
   paso = paso || (aviso ? "asesora" : "elegir");
   const ultSede = ls.get("express_ultima_sede") || SEDES[0];
-  const demo = DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador y la clave de todas es ${esc(CONFIG.DEMO_CLAVE)}. Pon tu SCRIPT_URL en la configuración para usar Google Sheets.</p>` : "https://script.google.com/macros/s/AKfycbykS2g4TsNZP6s8_KWPMOxC9I2HULmYaeZCqqCmqlb0rMAtSgzVhwd9s7_qBD4zsimo/exec";
+  const demo = DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador y la clave de todas es ${esc(CONFIG.DEMO_CLAVE)}. Pon tu SCRIPT_URL en la configuración para usar Google Sheets.</p>` : "";
   const volver = `<button type="button" class="lnk" id="btnVolver">← Volver</button>`;
 
   if (paso === "elegir"){
