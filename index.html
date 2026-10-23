@@ -6,7 +6,6 @@
 <title>Servicio Express</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
-<script src="msal-browser.min.js"></script>
 <style>
 :root{
   --bg:#f3f4f7; --card:#fff; --ink:#14171f; --muted:#6b7280; --line:#e4e6eb;
@@ -137,6 +136,24 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
 .ov b{font-size:2.4vw;display:block}.ov small{color:var(--tv-muted);font-size:1.1vw}
 .ov-i{font-size:6vw;margin-bottom:2vh}
 @media (max-width:900px){body.tvmode{overflow:auto}.tv{height:auto}.tv-grid{grid-template-columns:1fr 1fr}.tc{min-height:260px}}
+
+/* ---------- INICIO: sede / asesora / clave ---------- */
+.landing.wide{max-width:860px}
+.two{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-top:22px;text-align:left}
+.box{border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.box h3{margin:0;font-size:17px;display:flex;align-items:center;gap:8px}
+.box p{margin:0;font-size:13px}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted)}
+.fld select,.fld input{border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;color:var(--ink);background:#fff}
+.fld input[type=password]{letter-spacing:4px}
+.box .btn{margin-top:auto;padding:12px}
+.who-chip{display:inline-flex;align-items:center;gap:8px;background:#f3f4f7;border-radius:99px;padding:6px 12px;font-size:13px}
+.who-chip b{color:var(--brand)}
+.pc-as{font-size:12px;color:var(--muted)}
+.tc-as{font-size:1.1vw;letter-spacing:.2vw;color:var(--tv-muted);text-transform:uppercase}
+.tv-sede{color:var(--tv-ink);font-weight:800}
+.tv-brand{white-space:nowrap;font-size:1.8vw!important}.tv-clock{white-space:nowrap;font-size:1.8vw!important}.st small{white-space:nowrap}.tv-stats{gap:1.8vw!important}
+@media (max-width:720px){.two{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -146,33 +163,27 @@ body.tvmode{background:var(--tv-bg);color:var(--tv-ink);overflow:hidden}
    CONFIGURACIÓN — edita solo este bloque
    ===================================================================== */
 const CONFIG = {
-  // ===== OPCIÓN GOOGLE SHEETS (sin inicio de sesión) =====
-  // Pega aquí la URL de tu Apps Script (termina en /exec). Si la pones, se usa Google Sheets.
-  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbykS2g4TsNZP6s8_KWPMOxC9I2HULmYaeZCqqCmqlb0rMAtSgzVhwd9s7_qBD4zsimo/exec",
-  // ===== OPCIÓN EXCEL ONEDRIVE (requiere iniciar sesión Microsoft) =====
-  // App de Azure (puedes reutilizar la del dashboard de alistamiento).
-  // Déjalo vacío ("") para usar MODO DEMO (sin Excel, solo este navegador).
-  CLIENT_ID: "",
-  TENANT: "common",                 // o el ID de tu tenant / "organizations"
-  // Nombre del Excel en tu OneDrive (lo busca solo, aunque esté en una carpeta)
-  ARCHIVO: "ServicioExpress",
-  // "Files.ReadWrite"     = solo el Excel de quien inicia sesión (no requiere sistemas)
-  // "Files.ReadWrite.All" = también Excel compartidos (requiere aprobación de sistemas)
-  PERMISO: "Files.ReadWrite",
-  TABLA: "Express",                 // nombre de la tabla dentro del Excel
-  PUESTOS: 5,                       // máximo de cronómetros simultáneos
+  // URL de tu Apps Script de Google (termina en /exec). Vacío = MODO DEMO (solo este navegador).
+  SCRIPT_URL: "",
+  // Sedes y sus asesoras (las CLAVES se ponen en el código de Google, no aquí)
+  SEDES: {
+    "Prado":       ["Nain", "Celenia"],
+    "Calle 77":    ["Yerseny", "Neguib"],
+    "Circunvalar": ["Paola", "Adriana"]
+  },
+  PUESTOS: 5,                       // máximo de cronómetros por sede
   META_MIN: 90,                     // tiempo meta del servicio express (min)
   AVISO_MIN: 75,                    // pre-alerta amarilla (min)
   REPETIR_ALARMA_MIN: 3,            // repetir sonido de excedido cada X min
   REFRESCO_TV_SEG: 5,               // cada cuántos segundos lee el TV
   REFRESCO_ASESORA_SEG: 10,         // cada cuántos segundos lee la pantalla asesora
-  VOZ: true                         // el TV anuncia por voz las alertas
+  VOZ: true,                        // el TV anuncia por voz las alertas
+  DEMO_CLAVE: "1234"                // clave solo para el MODO DEMO
 };
 /* ===================================================================== */
 
-const COLS = ["ID","Fecha","Placa","Estado","RegistroMs","InicioMs","FinMs","HoraInicio","HoraFin","Minutos","Resultado"];
-const MODO_DATOS = CONFIG.SCRIPT_URL ? "sheets" : CONFIG.CLIENT_ID ? "excel" : "demo";
-const DEMO = MODO_DATOS === "demo";
+const DEMO = !CONFIG.SCRIPT_URL;
+const SEDES = Object.keys(CONFIG.SEDES);
 const app = document.getElementById("app");
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -180,8 +191,11 @@ const pad = n => String(n).padStart(2, "0");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const ls = {
   get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
-  set(k,v){ try { localStorage.setItem(k, v); } catch(e){} }
+  set(k,v){ try { localStorage.setItem(k, v); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
 };
+const slug = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-");
+const sedeDeSlug = x => SEDES.find(s => slug(s) === x) || null;
 function fmt(ms){ ms = Math.max(0, ms); const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
   return h ? `${h}:${pad(m)}:${pad(x)}` : `${pad(m)}:${pad(x)}`; }
 function hora(ms){ return ms ? new Date(+ms).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}) : ""; }
@@ -191,83 +205,34 @@ function nivel(ms){ return ms >= CONFIG.META_MIN*60000 ? 2 : ms >= CONFIG.AVISO_
 function esActivo(f){ return f.Estado === "ESPERA" || f.Estado === "EN_CURSO"; }
 function nuevoId(){ return "X" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase(); }
 function deletrear(p){ return String(p).split("").join(" "); }
-function rowToObj(v, i){ const o = {_index:i}; COLS.forEach((c,k) => o[c] = v[k]); return o; }
-function objToRow(o){ return COLS.map(c => (o[c] === undefined || o[c] === null) ? "" : o[c]); }
 
-/* ---------------- Almacenamiento: DEMO (localStorage) ---------------- */
+/* ---------------- Sesión de la asesora ---------------- */
+function leerSesion(){ try { const s = JSON.parse(ls.get("express_sesion")); return s && CONFIG.SEDES[s.sede] ? s : null; } catch(e){ return null; } }
+let sesion = leerSesion();
+function cerrarSesion(){ sesion = null; ls.del("express_sesion"); location.hash = "#inicio"; }
+
+/* ---------------- Almacenamiento: DEMO (este navegador) ---------------- */
 const Demo = {
-  key: "express_demo_rows",
+  key: "express_demo_v2",
   load(){ try { return JSON.parse(ls.get(this.key)) || []; } catch(e){ return []; } },
   save(r){ ls.set(this.key, JSON.stringify(r)); },
-  async listar(){ return this.load().map((v,i) => rowToObj(v,i)); },
-  async agregar(o){ const r = this.load(); r.push(objToRow(o)); this.save(r); },
-  async actualizar(i,o){ const r = this.load(); r[i] = objToRow(o); this.save(r); }
-};
-
-/* ---------------- Almacenamiento: Excel por Microsoft Graph ---------------- */
-let msalApp = null, cuenta = null;
-const SCOPES = [CONFIG.PERMISO];
-async function initAuth(){
-  msalApp = new msal.PublicClientApplication({
-    auth: { clientId: CONFIG.CLIENT_ID, authority: "https://login.microsoftonline.com/" + CONFIG.TENANT, redirectUri: location.origin + location.pathname },
-    cache: { cacheLocation: "localStorage" }
-  });
-  const r = await msalApp.handleRedirectPromise();
-  cuenta = (r && r.account) || msalApp.getAllAccounts()[0] || null;
-  return !!cuenta;
-}
-function login(){ msalApp.loginRedirect({ scopes: SCOPES }); }
-async function token(){
-  try { return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account: cuenta })).accessToken; }
-  catch(e){ msalApp.acquireTokenRedirect({ scopes: SCOPES, account: cuenta }); throw e; }
-}
-let rutaExcel = null;
-async function graphGet(url){
-  const t = await token();
-  const r = await fetch("https://graph.microsoft.com/v1.0" + url, { headers: { Authorization: "Bearer " + t } });
-  if (!r.ok) throw new Error("Graph " + r.status + ": " + (await r.text()).slice(0, 160));
-  return r.json();
-}
-async function buscarExcel(){
-  if (rutaExcel) return rutaExcel;
-  const guardada = ls.get("express_ruta");
-  if (guardada) return (rutaExcel = guardada);
-  const q = encodeURIComponent(CONFIG.ARCHIVO);
-  const d = await graphGet(`/me/drive/root/search(q='${q}')?$select=id,name,file`);
-  const esXl = n => /\.xlsx$/i.test(n || "") && n.toLowerCase().startsWith(CONFIG.ARCHIVO.toLowerCase());
-  const propio = (d.value || []).filter(i => i.file && esXl(i.name));
-  if (propio.length){
-    rutaExcel = "/me/drive/items/" + propio[0].id;
-  } else {
-    // Buscar en "Compartido conmigo" (cuando el Excel es de otra persona)
-    const c = await graphGet("/me/drive/sharedWithMe");
-    const comp = (c.value || []).map(i => i.remoteItem || i).filter(i => esXl(i.name) && i.parentReference && i.parentReference.driveId);
-    if (!comp.length) throw new Error(`No encontré el Excel "${CONFIG.ARCHIVO}.xlsx" ni en tu OneDrive ni en "Compartido conmigo". Pide que te lo compartan con permiso de EDICIÓN a esta cuenta y ábrelo una vez desde el correo o OneDrive.`);
-    rutaExcel = `/drives/${comp[0].parentReference.driveId}/items/${comp[0].id}`;
+  check(c){ if (!c || !CONFIG.SEDES[c.sede] || !CONFIG.SEDES[c.sede].includes(c.asesora) || String(c.clave) !== CONFIG.DEMO_CLAVE) throw new Error("Clave incorrecta."); },
+  async login(c){ this.check(c); return true; },
+  async listar(sede){ return this.load().filter(f => f.Sede === sede); },
+  async nuevo(o, c){
+    this.check(c); const r = this.load();
+    if (r.some(f => f.ID === o.ID)) return this.listar(c.sede);
+    const act = r.filter(esActivo);
+    if (act.some(f => String(f.Placa).toUpperCase() === o.Placa)) throw new Error(`La placa ${o.Placa} ya tiene cronómetro.`);
+    if (act.filter(f => f.Sede === c.sede).length >= CONFIG.PUESTOS) throw new Error(`Ya hay ${CONFIG.PUESTOS} cronómetros en uso en ${c.sede}.`);
+    r.push({ ...o, Sede:c.sede, Asesora:c.asesora }); this.save(r); return this.listar(c.sede);
+  },
+  async cambiar(id, cambios, esperado, c){
+    this.check(c); const r = this.load(), f = r.find(x => x.ID === id && x.Sede === c.sede);
+    if (!f) throw new Error("No se encontró el registro. Recarga la página.");
+    if (esperado && f.Estado !== esperado && f.Estado !== cambios.Estado) throw new Error("Este servicio ya cambió de estado.");
+    Object.assign(f, cambios); this.save(r); return this.listar(c.sede);
   }
-  ls.set("express_ruta", rutaExcel);
-  return rutaExcel;
-}
-async function gfetch(path, opts = {}){
-  const t = await token();
-  const base = await buscarExcel();
-  const res = await fetch("https://graph.microsoft.com/v1.0" + base + "/workbook/tables/" + encodeURIComponent(CONFIG.TABLA) + path, {
-    ...opts, headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" }
-  });
-  if (!res.ok){
-    const txt = await res.text();
-    if (res.status === 404){
-      try { localStorage.removeItem("express_ruta"); } catch(e){} rutaExcel = null;
-      if (/table/i.test(txt) || /ItemNotFound/i.test(txt) && base) throw new Error(`Encontré el Excel pero no la tabla "${CONFIG.TABLA}". Usa la plantilla ServicioExpress.xlsx más reciente.`);
-    }
-    throw new Error("Excel " + res.status + ": " + txt.slice(0, 160));
-  }
-  return res.status === 204 ? null : res.json();
-}
-const Graph = {
-  async listar(){ const d = await gfetch("/rows"); return d.value.map(r => rowToObj(r.values[0], r.index)); },
-  async agregar(o){ await gfetch("/rows/add", { method:"POST", body: JSON.stringify({ values:[objToRow(o)] }) }); },
-  async actualizar(i,o){ await gfetch(`/rows/itemAt(index=${i})`, { method:"PATCH", body: JSON.stringify({ values:[objToRow(o)] }) }); }
 };
 
 /* ---------------- Almacenamiento: Google Sheets (Apps Script) ---------------- */
@@ -280,7 +245,7 @@ async function leerJSON(r){
 }
 async function sheetsPost(body){
   for (let intento = 0; intento < 4; intento++){
-    if (intento) await sleep(1500 * intento);          // espera 1,5 s, 3 s, 4,5 s
+    if (intento) await sleep(1500 * intento);
     try {
       const r = await fetch(CONFIG.SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       const d = await leerJSON(r);
@@ -292,23 +257,26 @@ async function sheetsPost(body){
   }
   throw new Error("No se pudo guardar después de varios intentos. Revisa el internet y vuelve a intentarlo.");
 }
+const cred = c => ({ sede:c.sede, asesora:c.asesora, clave:c.clave });
 const Sheets = {
-  async listar(){
-    const r = await fetch(CONFIG.SCRIPT_URL + "?t=" + Date.now());
+  async login(c){ await sheetsPost({ accion:"login", ...cred(c) }); return true; },
+  async listar(sede){
+    const r = await fetch(CONFIG.SCRIPT_URL + "?sede=" + encodeURIComponent(sede) + "&t=" + Date.now());
     const d = await leerJSON(r);
     if (d.error) throw new Error(d.error);
-    return d.filas.map(x => rowToObj(x.values, x.index));
+    return d.filas;
   },
-  async nuevo(o){ const d = await sheetsPost({ accion:"agregar", fila:o, max:CONFIG.PUESTOS }); return d.filas; },
-  async cambiar(id, cambios, esperado){ const d = await sheetsPost({ accion:"actualizar", id, cambios, esperado }); return d.filas; }
+  async nuevo(o, c){ return (await sheetsPost({ accion:"agregar", ...cred(c), fila:o, max:CONFIG.PUESTOS })).filas; },
+  async cambiar(id, cambios, esperado, c){ return (await sheetsPost({ accion:"actualizar", ...cred(c), id, cambios, esperado })).filas; }
 };
+const store = DEMO ? Demo : Sheets;
 
 /* ---------------- Estado general ---------------- */
-let store = MODO_DATOS === "sheets" ? Sheets : MODO_DATOS === "excel" ? Graph : Demo;
-let modo = "inicio", filas = [], firma = "", cargando = false, ocupado = false, iniciado = false;
+let modo = "inicio", sedeActual = null, filas = [], firma = "", cargando = false, ocupado = false, iniciado = false;
 let sync = { ok: true, msg: "" };
 let conocidos = null;
 const niveles = {}, ultAlarma = {};
+let versionLocal = 0, fallosSeguidos = 0, ultimaLectura = 0;
 
 function cupos(){
   const a = filas.filter(esActivo).sort((x,y) => x.RegistroMs - y.RegistroMs).slice(0, CONFIG.PUESTOS);
@@ -322,31 +290,27 @@ function resumenHoy(){
   return { n, prom, pct: n ? Math.round(ok/n*100) : 0 };
 }
 
-let versionLocal = 0, fallosSeguidos = 0, ultimaLectura = 0;
 async function refrescar(){
-  if (cargando || ocupado) return; cargando = true;
-  const v0 = versionLocal;
+  if (!sedeActual || cargando || ocupado) return; cargando = true;
+  const v0 = versionLocal, sede = sedeActual;
   try {
-    const nuevas = (await store.listar()).filter(f => f.ID !== "" && f.ID != null);
-    if (v0 === versionLocal && !ocupado) filas = nuevas;   // ignora lecturas viejas
+    const nuevas = (await store.listar(sede)).filter(f => f.ID);
+    if (v0 === versionLocal && !ocupado && sede === sedeActual) filas = nuevas;   // ignora lecturas viejas
     sync = { ok:true, msg:"" }; fallosSeguidos = 0;
-  }
-  catch(e){
+  } catch(e){
     fallosSeguidos++; console.warn(e);
     sync = fallosSeguidos >= 3 ? { ok:false, msg:e.message } : { ok:true, msg:"", reintento:true };
-  }
-  finally { cargando = false; }
+  } finally { cargando = false; }
   pintarSync();
   const sig = JSON.stringify(filas.filter(f => esActivo(f) || esHoy(f.RegistroMs)).map(f => [f.ID,f.Estado,f.Placa]));
   if (sig !== firma){ firma = sig; detectarCambios(); renderDatos(); }
   tick();
 }
-async function refrescarYa(){ while (cargando) await sleep(80); firma = ""; await refrescar(); }
 
 function pintarSync(){
   const el = $("#sync"); if (!el) return;
   el.className = "sync" + (DEMO ? " demo" : sync.ok ? "" : " err");
-  el.textContent = DEMO ? "Modo demo (sin Excel)" : !sync.ok ? "Sin conexión — reintentando… (" + sync.msg + ")" : sync.reintento ? "Reconectando…" : (MODO_DATOS === "sheets" ? "Conectado a Google Sheets" : "Conectado al Excel");
+  el.textContent = DEMO ? "Modo demo (sin Google Sheets)" : !sync.ok ? "Sin conexión — reintentando… (" + sync.msg + ")" : sync.reintento ? "Reconectando…" : "Conectado a Google Sheets";
   el.title = sync.msg || "";
 }
 
@@ -414,36 +378,68 @@ function tick(){
 
 /* ---------------- Vistas ---------------- */
 function montar(){
-  firma = ""; document.body.className = modo === "tv" ? "tvmode" : "";
+  firma = ""; conocidos = null; filas = []; versionLocal++;
+  document.body.className = modo === "tv" ? "tvmode" : "";
   if (modo === "asesora") montarAsesora();
   else if (modo === "tv") montarTV();
   else montarInicio();
-  refrescar();
+  ultimaLectura = Date.now(); refrescar();
 }
-function montarInicio(){
-  app.innerHTML = `<div class="center"><div class="landing">
-    <div class="logo-xl">⏱</div><h1>Servicio Express</h1><p>¿Qué pantalla es este equipo?</p>
-    <div class="choices">
-      <a class="choice" href="#asesora">🧑‍💼<b>Asesora</b><small>Registrar placa, iniciar y finalizar</small></a>
-      <a class="choice" href="#tv">📺<b>Televisor</b><small>Cronómetros grandes con alertas y sonido</small></a>
+const opcionesSede = sel => SEDES.map(s => `<option value="${esc(s)}" ${s === sel ? "selected" : ""}>${esc(s)}</option>`).join("");
+
+function montarInicio(aviso){
+  const ultSede = ls.get("express_ultima_sede") || SEDES[0];
+  app.innerHTML = `<div class="center"><div class="landing wide">
+    <div class="logo-xl">⏱</div><h1>Servicio Express</h1><p>Elige la sede y la pantalla de este equipo</p>
+    <div class="two">
+      <form class="box" id="frmLogin" autocomplete="off">
+        <h3>🧑‍💼 Asesora</h3>
+        <p>Registrar placa, iniciar y finalizar el servicio</p>
+        <label class="fld">Sede<select id="lSede">${opcionesSede(ultSede)}</select></label>
+        <label class="fld">Asesora<select id="lAsesora"></select></label>
+        <label class="fld">Clave<input id="lClave" type="password" inputmode="numeric" placeholder="••••" autocomplete="off"></label>
+        <p id="lMsg" class="msg ${aviso ? "err" : ""}">${esc(aviso || "")}</p>
+        <button class="btn primary" id="btnEntrar" type="submit">Entrar</button>
+      </form>
+      <form class="box" id="frmTV">
+        <h3>📺 Televisor</h3>
+        <p>Cronómetros grandes de la sede, con alertas y sonido</p>
+        <label class="fld">Sede<select id="tSede">${opcionesSede(ultSede)}</select></label>
+        <button class="btn ghost" type="submit">Abrir TV de la sede</button>
+      </form>
     </div>
-    ${DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador. Abre Asesora y TV en dos pestañas para probar. Pon tu CLIENT_ID en la configuración para conectar el Excel.</p>` : ""}
+    ${DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador y la clave de todas es ${esc(CONFIG.DEMO_CLAVE)}. Pon tu SCRIPT_URL en la configuración para usar Google Sheets.</p>` : ""}
   </div></div>`;
-}
-function renderLogin(){
-  app.innerHTML = `<div class="center"><div class="login"><div class="logo-xl">⏱</div><h1>Servicio Express</h1>
-    <p>Inicia sesión con la cuenta Microsoft que tiene el Excel.</p>
-    <button class="btn primary" id="btnLogin">Iniciar sesión con Microsoft</button></div></div>`;
-  $("#btnLogin").onclick = login;
+  const llenarAsesoras = () => { $("#lAsesora").innerHTML = CONFIG.SEDES[$("#lSede").value].map(a => `<option>${esc(a)}</option>`).join(""); };
+  $("#lSede").onchange = () => { llenarAsesoras(); $("#tSede").value = $("#lSede").value; };
+  llenarAsesoras();
+  $("#frmTV").onsubmit = e => { e.preventDefault(); ls.set("express_ultima_sede", $("#tSede").value); location.hash = "#tv/" + slug($("#tSede").value); };
+  $("#frmLogin").onsubmit = async e => {
+    e.preventDefault();
+    const c = { sede:$("#lSede").value, asesora:$("#lAsesora").value, clave:$("#lClave").value.trim() };
+    const m = $("#lMsg"), b = $("#btnEntrar");
+    if (!c.clave){ m.className = "msg err"; m.textContent = "Escribe tu clave."; return; }
+    b.disabled = true; b.textContent = "Verificando…"; m.textContent = "";
+    try {
+      await store.login(c);
+      sesion = c; ls.set("express_sesion", JSON.stringify(c)); ls.set("express_ultima_sede", c.sede);
+      location.hash = "#asesora";
+    } catch(err){
+      m.className = "msg err"; m.textContent = err.message; b.disabled = false; b.textContent = "Entrar";
+      $("#lClave").select();
+    }
+  };
 }
 
 function montarAsesora(){
   app.innerHTML = `
   <header class="top">
-    <div class="brand"><span class="logo">⏱</span><div><b>Servicio Express</b><small>Pantalla asesora</small></div></div>
+    <div class="brand"><span class="logo">⏱</span><div><b>Servicio Express · ${esc(sesion.sede)}</b><small>Pantalla asesora</small></div></div>
     <div class="top-r">
+      <span class="who-chip">👤 <b>${esc(sesion.asesora)}</b></span>
       <span id="sync" class="sync"></span>
-      <a class="btn ghost sm" href="#tv" target="_blank">Abrir TV ↗</a>
+      <a class="btn ghost sm" href="#tv/${slug(sesion.sede)}" target="_blank">Abrir TV ↗</a>
+      <button class="btn ghost sm" id="btnSalir">Salir</button>
     </div>
   </header>
   <main class="wrap">
@@ -460,11 +456,12 @@ function montarAsesora(){
       <div id="puestos" class="grid-p"></div>
     </section>
     <section class="panel">
-      <div class="sec-h"><h2>Atendidos hoy</h2><span id="resumen"></span></div>
+      <div class="sec-h"><h2>Atendidos hoy en ${esc(sesion.sede)}</h2><span id="resumen"></span></div>
       <div id="hist" class="tblwrap"></div>
     </section>
-    <p class="foot">Meta ${CONFIG.META_MIN} min · alerta amarilla a los ${CONFIG.AVISO_MIN} min · <a href="#inicio">Cambiar pantalla</a></p>
+    <p class="foot">Meta ${CONFIG.META_MIN} min · alerta amarilla a los ${CONFIG.AVISO_MIN} min</p>
   </main>`;
+  $("#btnSalir").onclick = () => { if (confirm(`¿Cerrar la sesión de ${sesion.asesora}?`)) cerrarSesion(); };
   $("#fPlaca").oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); };
   $("#frm").onsubmit = registrar;
   $("#puestos").onclick = e => {
@@ -477,14 +474,15 @@ function montarAsesora(){
 
 function cardAsesora(p, f){
   if (!f) return `<div class="pc libre"><div>Libre</div></div>`;
+  const quien = f.Asesora ? `<div class="pc-as">Registró: ${esc(f.Asesora)}</div>` : "";
   if (f.Estado === "ESPERA") return `<div class="pc espera" data-espera="${+f.RegistroMs}">
       <div class="pc-h">Cupo ${p}<span class="tag">En espera</span></div>
-      <div class="pc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="sub">esperando creación de OT</div>
+      <div class="pc-placa">${esc(f.Placa)}</div>${quien}<div class="timer">00:00</div><div class="sub">esperando creación de OT</div>
       <div class="pc-btns"><button class="btn go" data-act="ini" data-id="${esc(f.ID)}">▶ Iniciar</button>
       <button class="btn ghost sm" data-act="cancel" data-id="${esc(f.ID)}">Cancelar</button></div></div>`;
   return `<div class="pc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}">
       <div class="pc-h">Cupo ${p}<span class="tag">En curso</span></div>
-      <div class="pc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="bar"><i></i></div>
+      <div class="pc-placa">${esc(f.Placa)}</div>${quien}<div class="timer">00:00</div><div class="bar"><i></i></div>
       <div class="sub">inicio ${hora(f.InicioMs)}</div>
       <div class="pc-btns"><button class="btn stop" data-act="fin" data-id="${esc(f.ID)}">■ Finalizar</button>
       <button class="btn ghost sm" data-act="cancel" data-id="${esc(f.ID)}">✕</button></div></div>`;
@@ -497,30 +495,31 @@ function renderAsesora(){
   $("#ocupacion").textContent = `${usados} de ${P} cronómetros en uso`;
   const fin = finalizadosHoy(), r = resumenHoy();
   $("#resumen").textContent = r.n ? `${r.n} atendidos · promedio ${r.prom.toFixed(1)} min · ${r.pct}% a tiempo` : "";
-  $("#hist").innerHTML = fin.length ? `<table><thead><tr><th>Placa</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Resultado</th></tr></thead><tbody>
+  $("#hist").innerHTML = fin.length ? `<table><thead><tr><th>Placa</th><th>Asesora</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Resultado</th></tr></thead><tbody>
     ${fin.map(f => { const ms = f.FinMs - f.InicioMs, ok = ms <= CONFIG.META_MIN*60000;
-      return `<tr><td class="mono">${esc(f.Placa)}</td><td>${hora(f.InicioMs)}</td><td>${hora(f.FinMs)}</td><td class="mono">${fmt(ms)}</td><td><span class="res ${ok ? "ok" : "bad"}">${ok ? "A tiempo" : "Excedido"}</span></td></tr>`; }).join("")}
+      return `<tr><td class="mono">${esc(f.Placa)}</td><td>${esc(f.Asesora)}</td><td>${hora(f.InicioMs)}</td><td>${hora(f.FinMs)}</td><td class="mono">${fmt(ms)}</td><td><span class="res ${ok ? "ok" : "bad"}">${ok ? "A tiempo" : "Excedido"}</span></td></tr>`; }).join("")}
     </tbody></table>` : `<div class="empty">Aún no hay servicios finalizados hoy.</div>`;
 }
 
 function montarTV(){
   app.innerHTML = `<div class="tv">
-    <header class="tv-top"><div class="tv-brand">SERVICIO <b>EXPRESS</b></div><div class="tv-stats" id="tvStats"></div><div class="tv-clock" id="tvClock"></div></header>
+    <header class="tv-top"><div class="tv-brand">SERVICIO <b>EXPRESS</b> · <span class="tv-sede">${esc(sedeActual.toUpperCase())}</span></div><div class="tv-stats" id="tvStats"></div><div class="tv-clock" id="tvClock"></div></header>
     <div id="tvAlert" class="tv-alert"></div>
     <div id="tvGrid" class="tv-grid"></div>
     <footer class="tv-foot"><span id="sync" class="sync"></span><div id="tvUlt" class="tv-ult"></div>
-      <span>Meta ${CONFIG.META_MIN} min</span><button id="btnFs" title="Pantalla completa">⛶</button><a href="#inicio">⚙</a></footer>
-    <div id="sonidoOv" class="ov"><div><div class="ov-i">🔊</div><b>Toca la pantalla para activar el sonido</b><small>El navegador lo exige cada vez que se abre esta pantalla</small></div></div>
+      <span>Meta ${CONFIG.META_MIN} min</span><button id="btnFs" title="Pantalla completa">⛶</button><a href="#inicio" title="Cambiar sede o pantalla">⚙</a></footer>
+    <div id="sonidoOv" class="ov"><div><div class="ov-i">🔊</div><b>Toca la pantalla para activar el sonido</b><small>TV de ${esc(sedeActual)} · el navegador lo exige cada vez que se abre esta pantalla</small></div></div>
   </div>`;
   $("#sonidoOv").onclick = () => { activarSonido(); SONIDOS.inicio(); $("#sonidoOv").remove(); pantallaCompleta(); despierto(); };
   $("#btnFs").onclick = pantallaCompleta;
 }
 function cardTV(p, f){
   if (!f) return `<div class="tc libre"><div class="tc-free">DISPONIBLE</div></div>`;
+  const quien = f.Asesora ? `<div class="tc-as">${esc(f.Asesora)}</div>` : "";
   if (f.Estado === "ESPERA") return `<div class="tc espera" data-espera="${+f.RegistroMs}">
-      <div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="tc-sub">EN ESPERA DE OT</div></div>`;
+      <div class="tc-placa">${esc(f.Placa)}</div>${quien}<div class="timer">00:00</div><div class="tc-sub">EN ESPERA DE OT</div></div>`;
   return `<div class="tc curso" data-ini="${+f.InicioMs}" data-id="${esc(f.ID)}" data-placa="${esc(f.Placa)}">
-      <div class="tc-placa">${esc(f.Placa)}</div><div class="timer">00:00</div><div class="bar"><i></i></div>
+      <div class="tc-placa">${esc(f.Placa)}</div>${quien}<div class="timer">00:00</div><div class="bar"><i></i></div>
       <div class="tc-sub">INICIO ${hora(f.InicioMs)}</div></div>`;
 }
 function renderTV(){
@@ -543,7 +542,6 @@ async function despierto(){ try { if (navigator.wakeLock) await navigator.wakeLo
 /* ---------------- Acciones de la asesora ---------------- */
 function msg(t, err){ const m = $("#msg"); if (!m) return; m.textContent = t; m.className = "msg" + (err ? " err" : ""); }
 function pintarAhora(){ versionLocal++; firma = ""; renderDatos(); tick(); }
-function filasDe(lista){ return (lista || []).map(x => rowToObj(x.values, x.index)).filter(f => f.ID !== "" && f.ID != null); }
 
 // Guarda en segundo plano; la pantalla ya se actualizó antes (respuesta instantánea)
 async function guardar(fn){
@@ -551,28 +549,16 @@ async function guardar(fn){
   const el = $("#sync"); if (el){ el.className = "sync demo"; el.textContent = "Guardando…"; }
   try {
     const res = await fn();
-    if (Array.isArray(res)){ filas = filasDe(res); }
+    if (Array.isArray(res)) filas = res.filter(f => f.ID);
     sync = { ok:true, msg:"" };
   } catch(e){
     msg(e.message, true);
+    if (/clave/i.test(e.message)){ setTimeout(() => { cerrarSesion(); }, 1500); }
+    else { ocupado = false; ultimaLectura = 0; }
   } finally {
-    ocupado = false;
-    versionLocal++;
-    if (store !== Sheets) await refrescarYa(); else { pintarSync(); firma = ""; renderDatos(); tick(); }
+    ocupado = false; versionLocal++;
+    pintarSync(); firma = ""; renderDatos(); tick();
   }
-}
-async function guardarNuevo(o){
-  if (store === Sheets) return Sheets.nuevo(o);
-  const act = (await store.listar()).filter(esActivo);
-  if (act.filter(f => f.ID !== o.ID).some(f => String(f.Placa).toUpperCase() === o.Placa)) throw new Error(`La placa ${o.Placa} ya tiene cronómetro.`);
-  await store.agregar(o);
-}
-async function guardarCambio(id, cambios, esperado){
-  if (store === Sheets) return Sheets.cambiar(id, cambios, esperado);
-  const f = (await store.listar()).find(x => String(x.ID) === String(id));
-  if (!f) throw new Error("No se encontró el registro. Recarga la página.");
-  if (esperado && f.Estado !== esperado) throw new Error("Este servicio ya cambió de estado.");
-  Object.assign(f, cambios); await store.actualizar(f._index, f);
 }
 function local(id){ return filas.find(f => String(f.ID) === String(id)); }
 
@@ -585,11 +571,11 @@ function registrar(ev){
   if (act.some(f => String(f.Placa).toUpperCase() === placa)) return msg(`La placa ${placa} ya tiene cronómetro.`, true);
   if (act.length >= CONFIG.PUESTOS) return msg(`Ya hay ${CONFIG.PUESTOS} cronómetros en uso. Finaliza uno primero.`, true);
   const now = Date.now();
-  const nueva = { _index:-1, ID:nuevoId(), Fecha:fechaTxt(now), Placa:placa, Estado:"ESPERA", RegistroMs:now, InicioMs:"", FinMs:"", HoraInicio:"", HoraFin:"", Minutos:"", Resultado:"" };
+  const nueva = { ID:nuevoId(), Fecha:fechaTxt(now), Sede:sesion.sede, Asesora:sesion.asesora, Placa:placa, Estado:"ESPERA", RegistroMs:now, InicioMs:"", FinMs:"", HoraInicio:"", HoraFin:"", Minutos:"", Resultado:"" };
   filas.push(nueva); pintarAhora();
   $("#fPlaca").value = ""; $("#fPlaca").focus();
   msg(`✓ ${placa} registrada. Pulsa ▶ Iniciar cuando crees la OT.`);
-  guardar(() => guardarNuevo(nueva));
+  guardar(() => store.nuevo(nueva, sesion));
 }
 function cambiarLocal(id, cambios, esperado, texto){
   if (ocupado) return msg("Espera un momento, guardando…", true);
@@ -597,7 +583,7 @@ function cambiarLocal(id, cambios, esperado, texto){
   if (esperado && f.Estado !== esperado) return;
   Object.assign(f, cambios); pintarAhora();
   if (texto) msg(texto);
-  guardar(() => guardarCambio(id, cambios, esperado));
+  guardar(() => store.cambiar(id, cambios, esperado, sesion));
 }
 function iniciar(id){
   const now = Date.now(), f = local(id);
@@ -616,32 +602,33 @@ function cancelar(id){
   cambiarLocal(id, { Estado:"CANCELADO", FinMs:now, HoraFin:hora(now) }, null, `${f.Placa} cancelada, cupo liberado.`);
 }
 
-/* ---------------- Arranque ---------------- */
-function irA(m){
-  modo = ["asesora","tv","inicio"].includes(m) ? m : "inicio";
-  if (modo !== "inicio") ls.set("express_modo", modo);
-  if (location.hash !== "#" + modo) history.replaceState(null, "", "#" + modo);
+/* ---------------- Rutas: #inicio · #asesora · #tv/prado · #tv/calle-77 · #tv/circunvalar ---------------- */
+function irA(ruta){
+  const [m, x] = String(ruta || "").replace(/^#/, "").split("/");
+  if (m === "tv" && sedeDeSlug(x)){
+    modo = "tv"; sedeActual = sedeDeSlug(x);
+  } else if (m === "asesora" && sesion){
+    modo = "asesora"; sedeActual = sesion.sede;
+  } else {
+    modo = "inicio"; sedeActual = null;
+  }
+  const destino = modo === "tv" ? "#tv/" + slug(sedeActual) : "#" + modo;
+  if (modo !== "inicio") ls.set("express_ruta", destino);
+  if (location.hash !== destino) history.replaceState(null, "", destino);
   montar();
 }
-async function arrancar(){
-  const h = location.hash.replace("#", "");
-  if (["asesora","tv"].includes(h)) ls.set("express_modo", h);
-  if (MODO_DATOS === "excel"){
-    try { if (!(await initAuth())){ renderLogin(); return; } }
-    catch(e){ app.innerHTML = `<div class="center"><div class="login"><h1>Error de inicio de sesión</h1><p>${esc(e.message)}</p></div></div>`; return; }
-  }
-  const destino = ["asesora","tv","inicio"].includes(location.hash.slice(1)) ? location.hash.slice(1) : (ls.get("express_modo") || "inicio");
-  irA(destino);
+function arrancar(){
+  irA(location.hash && location.hash !== "#" ? location.hash : (ls.get("express_ruta") || "#inicio"));
   if (!iniciado){
     iniciado = true;
     setInterval(tick, 1000);
     setInterval(() => {
-      if (modo === "asesora" && document.hidden) return;                 // pestaña oculta: no consulta
+      if (modo === "inicio" || (modo === "asesora" && document.hidden)) return;
       const base = (modo === "tv" ? CONFIG.REFRESCO_TV_SEG : CONFIG.REFRESCO_ASESORA_SEG) * 1000;
       const espera = base * Math.min(4, 1 + fallosSeguidos);             // si Google falla, consulta más despacio
       if (Date.now() - ultimaLectura >= espera){ ultimaLectura = Date.now(); refrescar(); }
     }, 1000);
-    window.addEventListener("hashchange", () => irA(location.hash.slice(1)));
+    window.addEventListener("hashchange", () => { if (location.hash === "#inicio") ls.del("express_ruta"); irA(location.hash); });
     window.addEventListener("storage", e => { if (DEMO && e.key === Demo.key) refrescar(); });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ refrescar(); if (modo === "tv") despierto(); } });
   }
