@@ -165,9 +165,7 @@ button.choice{background:#fff;cursor:pointer;font:inherit;font-size:34px;color:v
    CONFIGURACIÓN — edita solo este bloque
    ===================================================================== */
 const CONFIG = {
-  // URL de tu Apps Script de Google (termina en /exec). Vacío = MODO DEMO (solo este navegador).
-  SCRIPT_URL: "",
-  // Sedes y sus asesoras (las CLAVES se ponen en el código de Google, no aquí)
+
   SEDES: {
     "Prado":       ["Nain", "Celenia"],
     "Calle 77":    ["Yerseny", "Neguib"],
@@ -392,7 +390,7 @@ const opcionesSede = sel => SEDES.map(s => `<option value="${esc(s)}" ${s === se
 function montarInicio(aviso, paso){
   paso = paso || (aviso ? "asesora" : "elegir");
   const ultSede = ls.get("express_ultima_sede") || SEDES[0];
-  const demo = DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador y la clave de todas es ${esc(CONFIG.DEMO_CLAVE)}. Pon tu SCRIPT_URL en la configuración para usar Google Sheets.</p>` : "";
+  const demo = DEMO ? `<p class="demo">Modo demo: los datos se guardan solo en este navegador y la clave de todas es ${esc(CONFIG.DEMO_CLAVE)}. Pon tu SCRIPT_URL en la configuración para usar Google Sheets.</p>` : "https://script.google.com/macros/s/AKfycbykS2g4TsNZP6s8_KWPMOxC9I2HULmYaeZCqqCmqlb0rMAtSgzVhwd9s7_qBD4zsimo/exec";
   const volver = `<button type="button" class="lnk" id="btnVolver">← Volver</button>`;
 
   if (paso === "elegir"){
